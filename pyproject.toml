@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "md-translate"
+version = "0.1.0"
+description = "使用 LLM 自動翻譯 PDF 與 Markdown 論文"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["pdf", "markdown", "translation", "llm", "openai", "gemini"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "openai",
+    "google-genai",
+    "tqdm",
+    "mineru"
+]
+
+
+[project.scripts]
+md-translate = "md_translator.main:main"
+md-translate-file = "md_translator.main:main_translate_file"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/markdown-translator-pro"
+Documentation = "https://github.com/yourusername/markdown-translator-pro#readme"
+Repository = "https://github.com/yourusername/markdown-translator-pro.git"
