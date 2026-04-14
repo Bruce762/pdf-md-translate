@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-md-translate"
-version = "0.1.1"
+version = "0.1.2"
 description = "使用 LLM 自動翻譯 PDF 與 Markdown 論文"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -15,7 +15,7 @@ keywords = ["pdf", "markdown", "translation", "llm", "openai", "gemini"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -26,7 +26,7 @@ dependencies = [
     "openai",
     "google-genai",
     "tqdm",
-    "mineru"
+    "mineru[all]"
 ]
 
 
