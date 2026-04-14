@@ -32,7 +32,8 @@ class ConfigManager:
         return {
             "api_provider": "gemini",  # 'gemini' 或 'openai'
             "gemini_api_key": "",
-            "openai_api_key": ""
+            "openai_api_key": "",
+            "target_language": "繁體中文"  # 目标翻译语言
         }
     
     def _save_config(self):
@@ -166,6 +167,16 @@ class ConfigManager:
     def show_config_file_location(self):
         """显示配置文件位置"""
         print(f"配置文件位置: {self.config_file}")
+    
+    def get_target_language(self) -> str:
+        """获取目标翻译语言"""
+        return self.config.get("target_language", "繁體中文")
+    
+    def set_target_language(self, language: str):
+        """设置目标翻译语言"""
+        self.config["target_language"] = language
+        self._save_config()
+        print(f"✅ 目标语言已设置为: {language}")
 
 
 # 全局配置管理器实例

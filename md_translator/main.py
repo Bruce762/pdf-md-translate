@@ -63,15 +63,16 @@ class QuotaExceededException(Exception):
         self.retry_after = retry_after
         super().__init__(f"API 配額已超限 ({provider})")
 
-def call_translation_api(text, is_heading=False):
+def call_translation_api(text, is_heading=False, target_language="繁體中文"):
     """
     呼叫翻譯 API（支持 OpenAI 和 Google Gemini）
     is_heading: 是否為標題
+    target_language: 目標翻譯語言
     """
     system_prompt = (
         "你是一位精通演算法與計算優化的資工專家，專長是學術論文翻譯。\n\n"
         "### 任務規範：\n"
-        "1. 將 Markdown 文字翻譯成專業的繁體中文。\n"
+        f"1. 將 Markdown 文字翻譯成專業的{target_language}。\n"
         "2. **嚴格保留 LaTeX 公式**：所有以 `$` 或 `$$` 包圍的內容絕對不准變動，保持原始位置。\n"
         "3. **保留資工術語**：如 Mutation (變異), Crossover (交叉), Population (種群), $F$ (Scaling factor), $CR$ (Crossover rate) 等建議保留原文或標註原文。\n"
         "4. **僅輸出翻譯結果**，不要有任何解釋性文字。\n"
@@ -179,9 +180,10 @@ def is_markdown_table(text):
                 return True
     return False
 
-def translate_paragraph(p_strip):
+def translate_paragraph(p_strip, target_language="繁體中文"):
     """
     翻譯單個段落，返回雙語段落或原文
+    target_language: 目標翻譯語言
     """
     # 1. 處理空行
     if not p_strip:
@@ -211,7 +213,7 @@ def translate_paragraph(p_strip):
             return image_str
         
         # 翻譯說明文字
-        translated_caption = call_translation_api(caption, is_heading=False)
+        translated_caption = call_translation_api(caption, is_heading=False, target_language=target_language)
         if not translated_caption:
             return p_strip  # 翻譯失敗則保留原文
         
@@ -225,9 +227,9 @@ def translate_paragraph(p_strip):
         if is_heading:
             # 提取 # 和前後空格，保留實際標題文本
             heading_text = p_strip.lstrip("#").strip()
-            translated_text = call_translation_api(heading_text, is_heading=True)
+            translated_text = call_translation_api(heading_text, is_heading=True, target_language=target_language)
         else:
-            translated_text = call_translation_api(p_strip, is_heading=False)
+            translated_text = call_translation_api(p_strip, is_heading=False, target_language=target_language)
         
         if not translated_text:
             return p_strip  # 翻譯失敗則保留原文
@@ -242,7 +244,7 @@ def translate_paragraph(p_strip):
         
         return bilingual_paragraph
 
-def translate_markdown(file_path):
+def translate_markdown(file_path, target_language="繁體中文"):
     output_path = file_path.replace(".md", "_bilingual.md")
     
     if not os.path.exists(file_path):
@@ -265,6 +267,7 @@ def translate_markdown(file_path):
         thread_desc = f"📊 使用 5 個線程並發翻譯 (OpenAI)...\n"
     
     print(f"🚀 開始翻譯：{file_path}，總計 {len(paragraphs)} 個段落...")
+    print(f"🌐 目標語言：{target_language}")
     print(thread_desc)
     bilingual_content = [None] * len(paragraphs)  # 預先分配列表以保持順序
     quota_exceeded = False
@@ -272,7 +275,7 @@ def translate_markdown(file_path):
     try:
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             # 提交所有翻譯任務並保存索引
-            futures = {executor.submit(translate_paragraph, p.strip()): idx for idx, p in enumerate(paragraphs)}
+            futures = {executor.submit(translate_paragraph, p.strip(), target_language): idx for idx, p in enumerate(paragraphs)}
             
             # 使用 tqdm 顯示進度
             for future in tqdm(as_completed(futures), total=len(paragraphs), desc="翻譯進度"):
@@ -404,29 +407,80 @@ def print_usage():
     """打印使用說明"""
     print(f"{Colors.YELLOW}使用方式：{Colors.NC}\n")
     print(f"{Colors.GREEN}翻譯 PDF 文件（PDF → Markdown → 翻譯）：{Colors.NC}")
-    print("  md-translate paper.pdf                # 輸出到當前目錄")
+    print("  md-translate paper.pdf                # 輸出到當前目錄，使用默認語言")
     print("  md-translate paper.pdf ./output       # 輸出到 ./output")
+    print("  md-translate paper.pdf --lang         # 進入交互式語言選擇")
+    print("  md-translate paper.pdf --lang 简体中文 # 指定目標語言")
     print()
     print(f"{Colors.GREEN}翻譯 Markdown 文件（直接翻譯）：{Colors.NC}")
-    print("  md-translate paper.md                 # 生成 paper_translated.md")
-    print("  md-translate paper.md output.md       # 指定輸出文件")
+    print("  md-translate paper.md                 # 使用默認語言翻譯")
+    print("  md-translate paper.md output.md       # 指定輸出文件，使用默認語言")
+    print("  md-translate paper.md --lang          # 進入交互式語言選擇")
+    print("  md-translate paper.md --lang 日本語   # 指定目標語言")
     print()
-    print(f"{Colors.GREEN}配置和幫助：{Colors.NC}")
+    print(f"{Colors.GREEN}語言設置和幫助：{Colors.NC}")
+    print("  md-translate --lang                   # 進入語言選擇（保存到配置）")
     print("  md-translate --setup                  # 設置或修改 API Key")
     print("  md-translate --config                 # 查看配置文件位置")
     print("  md-translate --help                   # 顯示此幫助信息")
     print()
     print(f"{Colors.YELLOW}示例：{Colors.NC}")
-    print("  # 翻譯 PDF")
-    print("  md-translate paper.pdf")
-    print("  # 翻譯 Markdown")
+    print("  # 翻譯成默認語言（繁體中文）")
     print("  md-translate paper.md")
+    print("  # 進入交互式語言選擇")
+    print("  md-translate paper.md --lang")
+    print("  # 翻譯成簡體中文")
+    print("  md-translate paper.md --lang 简体中文")
+    print("  # 翻譯成日語")
+    print("  md-translate paper.pdf --lang 日本語")
     print()
     print(f"{Colors.YELLOW}功能說明：{Colors.NC}")
     print("  • 自動檢測文件類型（PDF 或 Markdown）")
+    print("  • 支持多種語言翻譯，交互式語言選擇")
     print("  • 保留 LaTeX 公式、代碼塊、表格")
-    print("  • 生成雙語文件（英文 + 繁體中文）")
+    print("  • 生成雙語文件（英文 + 目標語言）")
     print("  • 智能配額管理，配額不足時自動停止")
+
+def interactive_language_select():
+    """交互式語言選擇"""
+    print(f"\n{Colors.YELLOW}🌐 語言選擇{Colors.NC}")
+    print("="*50)
+    print("\n常用語言：")
+    print("1. 繁體中文")
+    print("2. 简体中文")
+    print("3. 日本語")
+    print("4. English")
+    print("5. Español")
+    print("6. Français")
+    print("7. Deutsch")
+    print("8. 한국어")
+    print("0. 自定義語言")
+    print()
+    
+    choice = input("請選擇語言 (0-8) [默認: 1]: ").strip() or "1"
+    
+    language_map = {
+        "1": "繁體中文",
+        "2": "简体中文",
+        "3": "日本語",
+        "4": "English",
+        "5": "Español",
+        "6": "Français",
+        "7": "Deutsch",
+        "8": "한국어"
+    }
+    
+    if choice in language_map:
+        target_language = language_map[choice]
+    elif choice == "0":
+        target_language = input("請輸入自定義語言: ").strip()
+        if not target_language:
+            target_language = "繁體中文"
+    else:
+        target_language = "繁體中文"
+    
+    print(f"\n✅ 確認：將翻譯成 {Colors.GREEN}{target_language}{Colors.NC}\n")
+    return target_language
 
 def main():
     """程式進入點 - 支持 PDF 和 Markdown 文件"""
@@ -444,6 +498,11 @@ def main():
         return
     elif sys.argv[1] in ["--help", "-h"]:
         print_usage()
+        return
+    elif sys.argv[1] in ["--lang", "-l"]:
+        # 只輸入 --lang，進入交互式模式
+        target_language = interactive_language_select()
+        config_manager.set_target_language(target_language)
         return
     
     # 初始化 API 配置
@@ -464,6 +523,16 @@ def main():
     # 獲取文件路徑
     input_file = sys.argv[1]
     
+    # 解析 --lang 參數
+    target_language = config_manager.get_target_language()  # 默認值
+    if "--lang" in sys.argv:
+        lang_idx = sys.argv.index("--lang")
+        if lang_idx + 1 < len(sys.argv) and not sys.argv[lang_idx + 1].startswith("-"):
+            target_language = sys.argv[lang_idx + 1]
+        else:
+            # --lang 沒有跟參數，進入交互式模式
+            target_language = interactive_language_select()
+    
     # 檢查文件是否存在
     if not os.path.exists(input_file):
         print(f"{Colors.RED}❌ 錯誤：找不到檔案 {input_file}{Colors.NC}")
@@ -472,19 +541,19 @@ def main():
     # 根據文件擴展名判斷文件類型
     if input_file.lower().endswith('.pdf'):
         # PDF 文件：使用 mineru 轉換後翻譯
-        _handle_pdf_translation(input_file)
+        _handle_pdf_translation(input_file, target_language)
     elif input_file.lower().endswith('.md'):
         # Markdown 文件：直接翻譯
-        _handle_markdown_translation(input_file)
+        _handle_markdown_translation(input_file, target_language)
     else:
         print(f"{Colors.RED}❌ 錯誤：不支持的文件格式{Colors.NC}")
         print(f"支持的格式: .pdf, .md")
         return
 
 
-def _handle_pdf_translation(pdf_file):
+def _handle_pdf_translation(pdf_file, target_language="繁體中文"):
     """處理 PDF 翻譯"""
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else "."
+    output_dir = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else "."
     
     # 第 1 步：使用 mineru 轉換 PDF
     md_file = convert_pdf_with_mineru(pdf_file, output_dir)
@@ -492,7 +561,7 @@ def _handle_pdf_translation(pdf_file):
     if md_file:
         # 第 2 步：翻譯 MD 文件
         print(f"\n{Colors.YELLOW}🌐 第 2 步：開始翻譯...{Colors.NC}")
-        translate_markdown(md_file)
+        translate_markdown(md_file, target_language)
         
         # 第 3 步：重命名雙語文件為最終輸出
         bilingual_file = md_file.replace(".md", "_bilingual.md")
@@ -508,19 +577,22 @@ def _handle_pdf_translation(pdf_file):
         print()
 
 
-def _handle_markdown_translation(md_file):
+def _handle_markdown_translation(md_file, target_language="繁體中文"):
     """處理 Markdown 直接翻譯"""
     # 獲取輸出文件（如果指定）
-    output_file = sys.argv[2] if len(sys.argv) > 2 else None
+    output_file = None
+    if len(sys.argv) > 2 and not sys.argv[2].startswith("--"):
+        output_file = sys.argv[2]
     
     print(f"{Colors.GREEN}========================================{Colors.NC}")
     print(f"{Colors.GREEN}Markdown 翻譯工具{Colors.NC}")
     print(f"{Colors.GREEN}輸入文件：{md_file}{Colors.NC}")
+    print(f"{Colors.GREEN}目標語言：{target_language}{Colors.NC}")
     print(f"{Colors.GREEN}========================================{Colors.NC}\n")
     
     # 翻譯 MD 文件
     print(f"{Colors.YELLOW}🌐 開始翻譯...{Colors.NC}")
-    translate_markdown(md_file)
+    translate_markdown(md_file, target_language)
     
     # 輸出文件處理
     bilingual_file = md_file.replace(".md", "_bilingual.md")
