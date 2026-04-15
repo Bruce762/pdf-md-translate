@@ -85,35 +85,35 @@ class ConfigManager:
         print("✅ OpenAI API Key 已保存")
     
     def setup_wizard(self):
-        """交互式设置向导"""
+        """交互式設置向導"""
         print("\n" + "="*50)
-        print("🔧 首次使用设置向导")
+        print("🔧 首次使用設置向導")
         print("="*50 + "\n")
         
-        # 选择 API 提供商
-        print("选择 API 提供商:")
-        print("1. Gemini (推荐，免费额度充足)")
-        print("2. OpenAI")
-        choice = input("请输入选择 (1 或 2) [默认: 1]: ").strip() or "1"
+        # 選擇 API 提供商
+        print("選擇 API 提供商:")
+        print("1. OpenAI (推薦)")
+        print("2. Gemini (較慢)")
+        choice = input("請輸入選擇 (1 或 2) [默認: 1]: ").strip() or "1"
         
-        if choice == "2":
+        if choice == "1":
             self.set_api_provider("openai")
-            print("\n请输入你的 OpenAI API Key (https://platform.openai.com/api-keys):")
+            print("\n請輸入你的 OpenAI API Key (https://platform.openai.com/api-keys):")
             api_key = input("OpenAI API Key: ").strip()
             if api_key:
                 self.set_openai_api_key(api_key)
             else:
-                print("⚠️  跳过 OpenAI API Key 设置")
+                print("⚠️  跳過 OpenAI API Key 設置")
         else:
             self.set_api_provider("gemini")
-            print("\n请输入你的 Google Gemini API Key (https://aistudio.google.com/apikey):")
+            print("\n請輸入你的 Google Gemini API Key (https://aistudio.google.com/apikey):")
             api_key = input("Gemini API Key: ").strip()
             if api_key:
                 self.set_gemini_api_key(api_key)
             else:
-                print("⚠️  跳过 Gemini API Key 设置")
+                print("⚠️  跳過 Gemini API Key 設置")
         
-        print("\n✅ 设置完成！\n")
+        print("\n✅ 設置完成！\n")
     
     def check_and_setup(self):
         """检查配置，如果缺失则进行设置"""
@@ -129,38 +129,38 @@ class ConfigManager:
                 self.setup_wizard()
     
     def reconfigure(self):
-        """重新配置 - 简化为两步"""
+        """重新配置 - 簡化為兩步"""
         print("\n" + "="*50)
         print("⚙️ API 配置")
         print("="*50 + "\n")
         
-        # 第一步：选择 API 提供商
-        print("选择 API 提供商：")
-        print("1. Gemini (Google)")
-        print("2. OpenAI")
-        provider_choice = input("\n请输入选择 (1 或 2) [默认: 1]: ").strip() or "1"
+        # 第一步：選擇 API 提供商
+        print("選擇 API 提供商：")
+        print("1. OpenAI (推薦)")
+        print("2. Gemini (較慢)")
+        provider_choice = input("\n請輸入選擇 (1 或 2) [默認: 1]: ").strip() or "1"
         
-        # 第二步：输入 API Key
-        if provider_choice == "2":
+        # 第二步：輸入 API Key
+        if provider_choice == "1":
             self.set_api_provider("openai")
-            print("\n🔑 OpenAI API Key 设置")
-            print("获取地址: https://platform.openai.com/api-keys")
-            api_key = input("\n请输入 OpenAI API Key: ").strip()
+            print("\n🔑 OpenAI API Key 設置")
+            print("取得地址: https://platform.openai.com/api-keys")
+            api_key = input("\n請輸入 OpenAI API Key: ").strip()
             if api_key:
                 self.set_openai_api_key(api_key)
                 print("✅ 配置完成！")
             else:
-                print("⚠️  已跳过")
+                print("⚠️  已跳過")
         else:
             self.set_api_provider("gemini")
-            print("\n🔑 Gemini API Key 设置")
-            print("获取地址: https://aistudio.google.com/apikey")
-            api_key = input("\n请输入 Gemini API Key: ").strip()
+            print("\n🔑 Gemini API Key 設置")
+            print("取得地址: https://aistudio.google.com/apikey")
+            api_key = input("\n請輸入 Gemini API Key: ").strip()
             if api_key:
                 self.set_gemini_api_key(api_key)
                 print("✅ 配置完成！")
             else:
-                print("⚠️  已跳过")
+                print("⚠️  已跳過")
         
         print()
     
@@ -173,10 +173,10 @@ class ConfigManager:
         return self.config.get("target_language", "繁體中文")
     
     def set_target_language(self, language: str):
-        """设置目标翻译语言"""
+        """設置目標翻譯語言"""
         self.config["target_language"] = language
         self._save_config()
-        print(f"✅ 目标语言已设置为: {language}")
+        print(f"✅ 目標語言已設置為: {language}")
 
 
 # 全局配置管理器实例

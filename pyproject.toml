@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-md-translate"
-version = "0.1.2"
+version = "0.1.7"
 description = "使用 LLM 自動翻譯 PDF 與 Markdown 論文"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -31,9 +31,14 @@ dependencies = [
 
 
 [project.scripts]
+pdf-md-translate = "md_translator.main:main"
 md-translate = "md_translator.main:main"
 
 [project.urls]
 Homepage = "https://github.com/Bruce762/pdf-md-translate"
 Documentation = "https://github.com/Bruce762/pdf-md-translate#readme"
 Repository = "https://github.com/Bruce762/pdf-md-translate.git"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["md_translator"]

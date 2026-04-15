@@ -368,14 +368,17 @@ def convert_pdf_with_mineru(pdf_file, output_dir):
         expected_path = os.path.join(temp_output, pdf_basename, "hybrid_auto", f"{pdf_basename}.md")
         
         md_file = None
+        md_dir = None  # MD 文件所在的目錄（可能包含圖片）
         if os.path.exists(expected_path):
             md_file = expected_path
+            md_dir = os.path.dirname(md_file)  # 獲取 MD 文件所在的目錄
         else:
             # 如果預期路徑不存在，查找任何 .md 文件
             for root, dirs, files in os.walk(temp_output):
                 for file in files:
                     if file.endswith(".md"):
                         md_file = os.path.join(root, file)
+                        md_dir = root  # 獲取 MD 文件所在的目錄
                         break
                 if md_file:
                     break
@@ -395,6 +398,83 @@ def convert_pdf_with_mineru(pdf_file, output_dir):
         shutil.copy2(md_file, work_md)
         
         print(f"{Colors.GREEN}✅ MD 文件已保存：{work_md}{Colors.NC}")
+        
+        # 第 3.5 步：保留圖片文件夾（統一放在 images/{pdf_basename}/ 下）
+        print(f"{Colors.YELLOW}📁 保存圖片文件夾...{Colors.NC}")
+        source_image_folder = None  # 記錄原始圖片文件夾名
+        if md_dir:
+            # 查找所有圖片相關的文件夾（通常名為 'images' 或含有圖片的子目錄）
+            for item in os.listdir(md_dir):
+                item_path = os.path.join(md_dir, item)
+                if os.path.isdir(item_path) and item.lower() in ['images', 'figures', 'pics', 'pictures']:
+                    source_image_folder = item.lower()
+                    # 統一保存到 images/{pdf_basename}/ 下
+                    images_base_dir = os.path.join(output_dir, "images")
+                    dest_dir = os.path.join(images_base_dir, pdf_basename)
+                    os.makedirs(images_base_dir, exist_ok=True)
+                    if os.path.exists(dest_dir):
+                        shutil.rmtree(dest_dir)
+                    shutil.copytree(item_path, dest_dir)
+                    print(f"{Colors.GREEN}✅ 圖片文件夾已保存：{dest_dir}{Colors.NC}")
+                    break  # 找到第一個圖片文件夾就停止
+                elif os.path.isdir(item_path):
+                    # 檢查是否有圖片文件的目錄
+                    has_images = False
+                    for root, dirs, files in os.walk(item_path):
+                        for file in files:
+                            if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg')):
+                                has_images = True
+                                break
+                        if has_images:
+                            break
+                    
+                    if has_images:
+                        source_image_folder = item
+                        # 統一保存到 images/{pdf_basename}/ 下
+                        images_base_dir = os.path.join(output_dir, "images")
+                        dest_dir = os.path.join(images_base_dir, pdf_basename)
+                        os.makedirs(images_base_dir, exist_ok=True)
+                        if os.path.exists(dest_dir):
+                            shutil.rmtree(dest_dir)
+                        shutil.copytree(item_path, dest_dir)
+                        print(f"{Colors.GREEN}✅ 圖片文件夾已保存：{dest_dir}{Colors.NC}")
+                        break  # 找到第一個圖片文件夾就停止
+        
+        # 第 3.6 步：更新 MD 文件中的圖片路徑引用
+        if os.path.exists(work_md):
+            print(f"{Colors.YELLOW}📝 更新圖片路徑參考...{Colors.NC}")
+            with open(work_md, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # 將所有圖片路徑統一為 images/{pdf_basename}/filename 格式
+            # 處理格式：![alt](images/xxx.jpg), ![alt](./images/xxx.jpg), ![alt](images/subdir/xxx.jpg) 等
+            
+            # 先找出所有圖片引用
+            pattern = r'!\[([^\]]*)\]\s*\(\s*([^)]*?\.(?:png|jpg|jpeg|gif|webp|svg))\s*\)'
+            
+            def replace_image_path(match):
+                import urllib.parse
+                alt_text = match.group(1)
+                img_path = match.group(2).strip()
+                
+                # 從路徑中提取檔案名
+                filename = os.path.basename(img_path)
+                
+                # 返回新的路徑格式：images/{pdf_basename}/filename
+                # 對空格進行 URL 編碼（%20）以支持各種 markdown 渲染器
+                new_path = f'images/{pdf_basename}/{filename}'
+                new_path = urllib.parse.quote(new_path, safe='/')  # safe='/' 保持斜杠不編碼
+                
+                return f'![{alt_text}]({new_path})'
+            
+            updated_content = re.sub(pattern, replace_image_path, content, flags=re.IGNORECASE)
+            
+            if updated_content != content:
+                with open(work_md, 'w', encoding='utf-8') as f:
+                    f.write(updated_content)
+                print(f"{Colors.GREEN}✅ 圖片路徑已更新{Colors.NC}")
+            else:
+                print(f"{Colors.YELLOW}⚠️ 沒有找到需要更新的圖片路徑{Colors.NC}")
         
         return work_md
         

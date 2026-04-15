@@ -37,6 +37,11 @@ pip install -e .
 
 ## 快速開始
 
+> ✅ **注意**：本工具支持兩個命令名稱，使用以下任一命令都可以：
+>
+> - `pdf-md-translate` - 套件名（推薦使用）
+> - `md-translate` - 別名（向後兼容）
+
 ### 1. 初始配置
 
 首次使用時，進行配置設置（輸入 API Key 和選擇偏好的 LLM 模型）：
@@ -67,6 +72,8 @@ md-translate your_file.md
 
 #### 翻譯 PDF 文件
 
+預設會翻成繁體中文
+
 ```bash
 md-translate your_file.pdf
 ```
@@ -90,6 +97,8 @@ md-translate your_file.md -l 簡體中文
 - English
 - 日本語
 - 한국어
+
+> ℹ️ **提示**：如果沒有指定 `--lang` 參數，預設會翻譯成 **繁體中文**
 
 ### 3. 配置管理
 
@@ -123,13 +132,15 @@ md-translate --lang
 
 ## 命令行參考
 
-| 命令                                      | 別名   | 用途                            |
-| ----------------------------------------- | ------ | ------------------------------- |
-| `md-translate <file>`                   | -      | 翻譯指定的 PDF 或 Markdown 文件 |
+> 💡 下表中所有 `md-translate` 命令均可替換為 `pdf-md-translate`（例如：`pdf-md-translate your_file.md`）
+
+| 命令                                    | 別名 | 用途                            |
+| --------------------------------------- | ---- | ------------------------------- |
+| `md-translate <file>`                   | -    | 翻譯指定的 PDF 或 Markdown 文件 |
 | `md-translate <file> --lang <language>` | `-l` | 翻譯文件並指定目標語言          |
 | `md-translate --setup`                  | `-s` | 進行初始設置和配置              |
 | `md-translate --config`                 | `-c` | 顯示配置文件位置                |
-| `md-translate --lang`                   | -      | 進入交互式語言選擇模式          |
+| `md-translate --lang`                   | -    | 進入交互式語言選擇模式          |
 | `md-translate --help`                   | `-h` | 顯示幫助信息                    |
 
 ## 使用範例
@@ -242,8 +253,8 @@ md-translate --setup
 
 ## 依賴說明
 
-| 套件             | 用途                   |
-| ---------------- | ---------------------- |
+| 套件           | 用途                   |
+| -------------- | ---------------------- |
 | `openai`       | OpenAI GPT API 調用    |
 | `google-genai` | Google Gemini API 調用 |
 | `tqdm`         | 進度條顯示             |
