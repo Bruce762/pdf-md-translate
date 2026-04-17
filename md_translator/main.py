@@ -18,6 +18,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 導入配置管理模塊
 from .config import config_manager
 
+# 動態導入 convert_to_pdf 函數（兼容不同的導入路徑）
+def import_pdf_converter():
+    """動態導入 convert_to_pdf 函數"""
+    try:
+        # 從同目錄導入 convert_to_pdf 模組
+        from . import convert_to_pdf
+        return convert_to_pdf.convert_markdown_to_html, convert_to_pdf.convert_html_to_pdf, convert_to_pdf.fix_css_for_printing
+    except ImportError:
+        return None, None, None
+
 # --- 動態設定區（從配置讀取）---
 def init_api_config():
     """初始化 API 配置"""
@@ -38,7 +48,7 @@ def init_api_config():
         gemini_client = genai.Client(api_key=GOOGLE_API_KEY)
 
 # 默認值（將在 init_api_config() 中設置）
-API_PROVIDER = "gemini"
+API_PROVIDER = "openai"
 OPENAI_API_KEY = ""
 GOOGLE_API_KEY = ""
 openai_client = None
@@ -245,7 +255,7 @@ def translate_paragraph(p_strip, target_language="繁體中文"):
         return bilingual_paragraph
 
 def translate_markdown(file_path, target_language="繁體中文"):
-    output_path = file_path.replace(".md", "_bilingual.md")
+    output_path = file_path.replace(".md", "_trans.md")
     
     if not os.path.exists(file_path):
         print(f"❌ 錯誤：找不到檔案 {file_path}")
@@ -486,39 +496,44 @@ def convert_pdf_with_mineru(pdf_file, output_dir):
 def print_usage():
     """打印使用說明"""
     print(f"{Colors.YELLOW}使用方式：{Colors.NC}\n")
-    print(f"{Colors.GREEN}翻譯 PDF 文件（PDF → Markdown → 翻譯）：{Colors.NC}")
-    print("  md-translate paper.pdf                # 輸出到當前目錄，使用默認語言")
-    print("  md-translate paper.pdf ./output       # 輸出到 ./output")
-    print("  md-translate paper.pdf --lang         # 進入交互式語言選擇")
-    print("  md-translate paper.pdf --lang 简体中文 # 指定目標語言")
+    print(f"{Colors.GREEN}基本用法：{Colors.NC}")
+    print("  md-translate file.pdf                 # PDF → MD → 翻譯 → PDF")
+    print("  md-translate file.md                  # MD → 翻譯 → PDF")
     print()
-    print(f"{Colors.GREEN}翻譯 Markdown 文件（直接翻譯）：{Colors.NC}")
-    print("  md-translate paper.md                 # 使用默認語言翻譯")
-    print("  md-translate paper.md output.md       # 指定輸出文件，使用默認語言")
-    print("  md-translate paper.md --lang          # 進入交互式語言選擇")
-    print("  md-translate paper.md --lang 日本語   # 指定目標語言")
+    print(f"{Colors.GREEN}使用 -m 參數（只輸出 MD，不轉 PDF）：{Colors.NC}")
+    print("  md-translate file.pdf -m              # PDF → MD → 翻譯")
+    print("  md-translate file.md -m               # MD → 翻譯")
     print()
-    print(f"{Colors.GREEN}語言設置和幫助：{Colors.NC}")
-    print("  md-translate --lang                   # 進入語言選擇（保存到配置）")
+    print(f"{Colors.GREEN}使用 --no-translate 參數（不翻譯）：{Colors.NC}")
+    print("  md-translate file.pdf --no-translate  # PDF → MD → PDF")
+    print("  md-translate file.md --no-translate   # MD → PDF")
+    print()
+    print(f"{Colors.GREEN}自定義 CSS 樣式：{Colors.NC}")
+    print("  md-translate file.md --css style.css         # 使用自定義 CSS")
+    print("  md-translate file.pdf --css custom.css -m   # PDF → MD + 自定義樣式")
+    print()
+    print(f"{Colors.GREEN}組合用法：{Colors.NC}")
+    print("  md-translate file.pdf -m --no-translate # PDF → MD，無翻譯")
+    print("  md-translate file.md -m --no-translate  # 無操作（已是 MD，無翻譯）")
+    print()
+    print(f"{Colors.GREEN}語言和設置：{Colors.NC}")
+    print("  md-translate file.md --lang           # 進入交互式語言選擇")
+    print("  md-translate file.md --lang 简体中文   # 指定目標語言")
     print("  md-translate --setup                  # 設置或修改 API Key")
     print("  md-translate --config                 # 查看配置文件位置")
     print("  md-translate --help                   # 顯示此幫助信息")
     print()
-    print(f"{Colors.YELLOW}示例：{Colors.NC}")
-    print("  # 翻譯成默認語言（繁體中文）")
-    print("  md-translate paper.md")
-    print("  # 進入交互式語言選擇")
-    print("  md-translate paper.md --lang")
-    print("  # 翻譯成簡體中文")
-    print("  md-translate paper.md --lang 简体中文")
-    print("  # 翻譯成日語")
-    print("  md-translate paper.pdf --lang 日本語")
+    print(f"{Colors.YELLOW}參數說明：{Colors.NC}")
+    print("  -m                  只輸出 MD 文件，不轉換為 PDF")
+    print("  --no-translate      跳過翻譯步驟")
+    print("  --lang [LANGUAGE]   指定目標翻譯語言")
+    print("  --css [FILE]        指定自定義 CSS 文件（用於 PDF 轉換的樣式）")
     print()
-    print(f"{Colors.YELLOW}功能說明：{Colors.NC}")
-    print("  • 自動檢測文件類型（PDF 或 Markdown）")
-    print("  • 支持多種語言翻譯，交互式語言選擇")
-    print("  • 保留 LaTeX 公式、代碼塊、表格")
-    print("  • 生成雙語文件（英文 + 目標語言）")
+    print(f"{Colors.YELLOW}功能矩陣：{Colors.NC}")
+    print("  PDF → MD 轉換: PDF 文件自動使用 mineru 轉換")
+    print("  翻譯: 保留 LaTeX、代碼塊、表格")
+    print("  PDF 輸出: 使用 pypandoc + Chrome 無頭瀏覽器")
+    print("  CSS 樣式: 可使用自定義 CSS 文件或默認樣式")
     print("  • 智能配額管理，配額不足時自動停止")
 
 def interactive_language_select():
@@ -562,6 +577,40 @@ def interactive_language_select():
     print(f"\n✅ 確認：將翻譯成 {Colors.GREEN}{target_language}{Colors.NC}\n")
     return target_language
 
+def parse_command_flags(args):
+    """
+    解析命令行參數
+    返回：(only_markdown, skip_translate, target_language, css_file)
+    """
+    only_markdown = False  # -m 參數
+    skip_translate = False  # --no-translate 參數
+    target_language = None  # --lang 參數值
+    css_file = None  # --css 參數值
+    
+    # 掃描參數
+    for i, arg in enumerate(args):
+        if arg in ["-m", "--md-only"]:
+            only_markdown = True
+        elif arg == "--no-translate":
+            skip_translate = True
+        elif arg in ["--lang", "-l"]:
+            # 檢查是否有語言參數跟在後面
+            if i + 1 < len(args) and not args[i + 1].startswith("-"):
+                target_language = args[i + 1]
+            else:
+                # 沒有參數時觸發交互式選擇
+                target_language = interactive_language_select()
+        elif arg in ["--css", "--style"]:
+            # 檢查是否有 CSS 文件路徑跟在後面
+            if i + 1 < len(args) and not args[i + 1].startswith("-"):
+                css_file = args[i + 1]
+    
+    # 如果沒指定語言，使用默認值
+    if target_language is None:
+        target_language = config_manager.get_target_language()
+    
+    return only_markdown, skip_translate, target_language, css_file
+
 def main():
     """程式進入點 - 支持 PDF 和 Markdown 文件"""
     # 檢查命令行參數
@@ -603,71 +652,215 @@ def main():
     # 獲取文件路徑
     input_file = sys.argv[1]
     
-    # 解析 --lang 參數
-    target_language = config_manager.get_target_language()  # 默認值
-    if "--lang" in sys.argv:
-        lang_idx = sys.argv.index("--lang")
-        if lang_idx + 1 < len(sys.argv) and not sys.argv[lang_idx + 1].startswith("-"):
-            target_language = sys.argv[lang_idx + 1]
-        else:
-            # --lang 沒有跟參數，進入交互式模式
-            target_language = interactive_language_select()
+    # 解析命令參數
+    only_markdown, skip_translate, target_language, css_file = parse_command_flags(sys.argv[2:])
     
     # 檢查文件是否存在
     if not os.path.exists(input_file):
         print(f"{Colors.RED}❌ 錯誤：找不到檔案 {input_file}{Colors.NC}")
         return
     
-    # 根據文件擴展名判斷文件類型
-    if input_file.lower().endswith('.pdf'):
-        # PDF 文件：使用 mineru 轉換後翻譯
-        _handle_pdf_translation(input_file, target_language)
-    elif input_file.lower().endswith('.md'):
-        # Markdown 文件：直接翻譯
-        _handle_markdown_translation(input_file, target_language)
+    # 根據文件類型和參數決定操作
+    is_pdf = input_file.lower().endswith('.pdf')
+    is_md = input_file.lower().endswith('.md')
+    
+    if is_pdf:
+        # PDF 文件：可能需要轉 MD + 翻譯 + 轉 PDF
+        _handle_pdf_file(input_file, target_language, only_markdown, skip_translate, css_file)
+    elif is_md:
+        # Markdown 文件：可能需要翻譯 + 轉 PDF
+        _handle_md_file(input_file, target_language, only_markdown, skip_translate, css_file)
     else:
         print(f"{Colors.RED}❌ 錯誤：不支持的文件格式{Colors.NC}")
         print(f"支持的格式: .pdf, .md")
         return
 
 
-def _handle_pdf_translation(pdf_file, target_language="繁體中文"):
-    """處理 PDF 翻譯"""
-    output_dir = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else "."
+def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_translate=False, css_file=None):
+    """
+    處理 PDF 文件
+    only_markdown: -m 參數，只輸出 MD，不轉 PDF
+    skip_translate: --no-translate 參數，跳過翻譯
+    css_file: 自定義 CSS 文件路徑
+    """
+    output_dir = "."
     
-    # 第 1 步：使用 mineru 轉換 PDF
+    # 操作矩陣：
+    # only_markdown=T, skip_translate=T: PDF → MD（不翻譯）
+    # only_markdown=T, skip_translate=F: PDF → MD → 翻譯
+    # only_markdown=F, skip_translate=T: PDF → MD → PDF（不翻譯）
+    # only_markdown=F, skip_translate=F: PDF → MD → 翻譯 → PDF
+    
+    print(f"{Colors.GREEN}========================================{Colors.NC}")
+    print(f"{Colors.GREEN}PDF 文件處理{Colors.NC}")
+    print(f"{Colors.GREEN}操作模式：", end="")
+    
+    operations = []
+    if not skip_translate:
+        operations.append("翻譯")
+    if not only_markdown:
+        operations.append("轉 PDF")
+    operations.insert(0, "PDF→MD 轉換")
+    
+    print(" → ".join(operations))
+    print(f"{Colors.GREEN}========================================{Colors.NC}\n")
+    
+    # 第 1 步：轉換 PDF 為 MD
     md_file = convert_pdf_with_mineru(pdf_file, output_dir)
     
-    if md_file:
-        # 第 2 步：翻譯 MD 文件
+    if not md_file:
+        print(f"{Colors.RED}❌ PDF 轉換失敗{Colors.NC}")
+        return
+    
+    original_md = md_file  # 記錄原始轉換的 MD 文件
+    
+    # 第 2 步：翻譯（如果未設置 --no-translate）
+    if not skip_translate:
         print(f"\n{Colors.YELLOW}🌐 第 2 步：開始翻譯...{Colors.NC}")
         translate_markdown(md_file, target_language)
         
-        # 第 3 步：重命名雙語文件為最終輸出
-        bilingual_file = md_file.replace(".md", "_bilingual.md")
-        if os.path.exists(bilingual_file):
-            os.remove(md_file)
-            os.rename(bilingual_file, md_file)
+        trans_file = md_file.replace(".md", "_trans.md")
+        if os.path.exists(trans_file):
+            md_file = trans_file
+    
+    # 第 3 步：轉 PDF（如果未設置 -m）
+    if not only_markdown:
+        print(f"\n{Colors.YELLOW}📄 第", end="")
+        if skip_translate:
+            print(f" 2 步", end="")
+        else:
+            print(f" 3 步", end="")
+        print(f"：開始轉換為 PDF...{Colors.NC}")
+        _convert_translated_to_pdf(md_file, css_file)
         
-        # 完成
-        print(f"\n{Colors.GREEN}========================================{Colors.NC}")
-        print(f"{Colors.GREEN}✅ 完成！{Colors.NC}")
-        print(f"{Colors.GREEN}========================================{Colors.NC}")
+        # 轉換完成後，刪除所有中間的 MD 文件（只保留最終的 PDF）
+        # 刪除 _trans.md 文件
+        if os.path.exists(md_file):
+            os.remove(md_file)
+        # 刪除原始轉換的 MD 文件（如果與最終不同）
+        if original_md != md_file and os.path.exists(original_md):
+            os.remove(original_md)
+    else:
+        # 當 -m 已設置時，刪除原始轉換的 MD（只保留翻譯後的 _trans.md）
+        if original_md != md_file and os.path.exists(original_md):
+            os.remove(original_md)
+    
+    # 完成
+    print(f"\n{Colors.GREEN}========================================{Colors.NC}")
+    print(f"{Colors.GREEN}✅ 完成！{Colors.NC}")
+    print(f"{Colors.GREEN}========================================{Colors.NC}")
+    if only_markdown:
         print(f"輸出文件: {Colors.GREEN}{md_file}{Colors.NC}")
-        print()
+    else:
+        output_pdf = md_file.replace(".md", "_trans.pdf")
+        print(f"輸出文件: {Colors.GREEN}{output_pdf}{Colors.NC}")
+    print()
+
+
+def _handle_md_file(md_file, target_language, only_markdown=False, skip_translate=False, css_file=None):
+    """
+    處理 Markdown 文件
+    only_markdown: -m 參數，只輸出 MD，不轉 PDF
+    skip_translate: --no-translate 參數，跳過翻譯
+    css_file: 自定義 CSS 文件路徑
+    """
+    # 操作矩陣：
+    # only_markdown=T, skip_translate=T: 無操作（MD 已是最終格式，無翻譯）
+    # only_markdown=T, skip_translate=F: MD → 翻譯
+    # only_markdown=F, skip_translate=T: MD → PDF（不翻譯）
+    # only_markdown=F, skip_translate=F: MD → 翻譯 → PDF
+    
+    print(f"{Colors.GREEN}========================================{Colors.NC}")
+    print(f"{Colors.GREEN}Markdown 文件處理{Colors.NC}")
+    print(f"{Colors.GREEN}操作模式：", end="")
+    
+    if only_markdown and skip_translate:
+        print("無操作")
+        print(f"{Colors.GREEN}========================================{Colors.NC}\n")
+        print(f"{Colors.YELLOW}⚠️ 無操作：文件已是 Markdown 且跳過翻譯{Colors.NC}\n")
+        return
+    
+    operations = []
+    if not skip_translate:
+        operations.append("翻譯")
+    if not only_markdown:
+        operations.append("轉 PDF")
+    
+    if not operations:
+        print("無操作")
+        print(f"{Colors.GREEN}========================================{Colors.NC}\n")
+        return
+    
+    print(" → ".join(operations))
+    print(f"{Colors.GREEN}========================================{Colors.NC}\n")
+    
+    final_md_file = md_file
+    
+    # 第 1 步：翻譯（如果未設置 --no-translate）
+    if not skip_translate:
+        print(f"{Colors.YELLOW}🌐 開始翻譯...{Colors.NC}")
+        translate_markdown(md_file, target_language)
+        
+        trans_file = md_file.replace(".md", "_trans.md")
+        if os.path.exists(trans_file):
+            final_md_file = trans_file
+    
+    # 第 2 步：轉 PDF（如果未設置 -m）
+    if not only_markdown:
+        print(f"\n{Colors.YELLOW}📄 第", end="")
+        if skip_translate:
+            print(f" 1 步", end="")
+        else:
+            print(f" 2 步", end="")
+        print(f"：開始轉換為 PDF...{Colors.NC}")
+        _convert_translated_to_pdf(final_md_file, css_file)
+        
+        # 轉換完成後，刪除所有中間的 _trans.md 文件（只保留最終 PDF，原始 MD 保留）
+        if final_md_file != md_file and os.path.exists(final_md_file):
+            os.remove(final_md_file)
+    
+    # 完成
+    print(f"\n{Colors.GREEN}========================================{Colors.NC}")
+    print(f"{Colors.GREEN}✅ 完成！{Colors.NC}")
+    print(f"{Colors.GREEN}========================================{Colors.NC}")
+    if only_markdown:
+        print(f"輸出文件: {Colors.GREEN}{final_md_file}{Colors.NC}")
+    else:
+        # 計算 PDF 文件名
+        if skip_translate:
+            # 未翻譯，使用原始 MD 文件名
+            output_pdf = md_file.replace(".md", "_trans.pdf")
+        else:
+            # 已翻譯，使用翻譯後的 MD 文件名對應的 PDF
+            output_pdf = final_md_file.replace(".md", "_trans.pdf")
+        print(f"輸出文件: {Colors.GREEN}{output_pdf}{Colors.NC}")
+    print()
+
+
+
+
 
 
 def _handle_markdown_translation(md_file, target_language="繁體中文"):
     """處理 Markdown 直接翻譯"""
     # 獲取輸出文件（如果指定）
     output_file = None
-    if len(sys.argv) > 2 and not sys.argv[2].startswith("--"):
-        output_file = sys.argv[2]
+    convert_to_pdf = False
+    
+    # 解析參數
+    for i, arg in enumerate(sys.argv[2:], start=2):
+        if arg.startswith("--"):
+            if arg in ["--pdf", "-p"]:
+                convert_to_pdf = True
+        elif not arg.startswith("-") and output_file is None:
+            output_file = arg
     
     print(f"{Colors.GREEN}========================================{Colors.NC}")
     print(f"{Colors.GREEN}Markdown 翻譯工具{Colors.NC}")
     print(f"{Colors.GREEN}輸入文件：{md_file}{Colors.NC}")
     print(f"{Colors.GREEN}目標語言：{target_language}{Colors.NC}")
+    if convert_to_pdf:
+        print(f"{Colors.GREEN}PDF 轉換：已啟用{Colors.NC}")
     print(f"{Colors.GREEN}========================================{Colors.NC}\n")
     
     # 翻譯 MD 文件
@@ -675,29 +868,120 @@ def _handle_markdown_translation(md_file, target_language="繁體中文"):
     translate_markdown(md_file, target_language)
     
     # 輸出文件處理
-    bilingual_file = md_file.replace(".md", "_bilingual.md")
+    trans_file = md_file.replace(".md", "_trans.md")
     
     if output_file:
         # 使用指定的輸出文件名
-        if os.path.exists(bilingual_file):
-            os.rename(bilingual_file, output_file)
+        if os.path.exists(trans_file):
+            os.rename(trans_file, output_file)
+        final_md_file = output_file
         print(f"\n{Colors.GREEN}========================================{Colors.NC}")
         print(f"{Colors.GREEN}✅ 翻譯完成！{Colors.NC}")
         print(f"{Colors.GREEN}========================================{Colors.NC}")
         print(f"輸出文件: {Colors.GREEN}{output_file}{Colors.NC}\n")
     else:
-        # 默認輸出文件名：filename_translated.md
-        if os.path.exists(bilingual_file):
-            final_output = md_file.replace(".md", "_translated.md")
-            os.rename(bilingual_file, final_output)
+        # 默認輸出文件名：filename_trans.md
+        if os.path.exists(trans_file):
+            final_md_file = trans_file
             print(f"\n{Colors.GREEN}========================================{Colors.NC}")
             print(f"{Colors.GREEN}✅ 翻譯完成！{Colors.NC}")
             print(f"{Colors.GREEN}========================================{Colors.NC}")
-            print(f"輸出文件: {Colors.GREEN}{final_output}{Colors.NC}\n")
+            print(f"輸出文件: {Colors.GREEN}{final_md_file}{Colors.NC}\n")
+        else:
+            final_md_file = md_file
+    
+    # 如果設置了 -p，轉換成 PDF
+    if convert_to_pdf:
+        _convert_translated_to_pdf(final_md_file)
 
 def print_translate_file_usage():
     """打印 MD 翻譯用法"""
     print(f"{Colors.YELLOW}Markdown 翻譯工具 - 只翻譯 MD 文件{Colors.NC}\n")
+
+def _convert_translated_to_pdf(md_file, css_file=None):
+    """將翻譯後的 Markdown 轉換為 PDF
+    
+    參數:
+        md_file: Markdown 文件路徑
+        css_file: 自定義 CSS 文件路徑（可選）
+    """
+    print(f"\n{Colors.YELLOW}📄 開始轉換為 PDF...{Colors.NC}")
+    
+    # 導入 PDF 轉換函數
+    convert_markdown_to_html, convert_html_to_pdf, fix_css_for_printing = import_pdf_converter()
+    
+    if convert_markdown_to_html is None:
+        print(f"{Colors.RED}❌ 無法導入 PDF 轉換模組{Colors.NC}")
+        return False
+    
+    temp_fixed_css = None  # 記錄臨時固定 CSS 文件
+    
+    try:
+        # 確定 CSS 文件
+        if css_file is None:
+            # 默認使用包目錄中的 default.css
+            pkg_dir = os.path.dirname(__file__)
+            css_file = os.path.join(pkg_dir, "default.css")
+            
+            if not os.path.exists(css_file):
+                # 如果包目錄中沒有，嘗試當前目錄
+                css_file = "default.css"
+                if not os.path.exists(css_file):
+                    print(f"{Colors.YELLOW}⚠️ CSS 文件不存在，使用默認樣式{Colors.NC}")
+                    css_file = None
+            css_to_use = css_file
+        else:
+            # 驗證自定義 CSS 文件是否存在
+            if not os.path.exists(css_file):
+                print(f"{Colors.RED}❌ 自定義 CSS 文件不存在: {css_file}{Colors.NC}")
+                return False
+            print(f"{Colors.GREEN}✓ 使用自定義 CSS: {css_file}{Colors.NC}")
+            
+            # 對自定義 CSS 進行修復，確保背景顏色和底色一致
+            print(f"  🔧 修復 CSS 以兼容 PDF 打印...")
+            css_to_use = fix_css_for_printing(css_file)
+            # 如果修復後的文件與原文件不同，記錄下來以便後續清理
+            if css_to_use != css_file:
+                temp_fixed_css = css_to_use
+        
+        # 生成輸出 PDF 文件名
+        output_pdf = md_file.replace(".md", "_trans.pdf")
+        
+        # 創建臨時 HTML 文件
+        temp_html = md_file.replace(".md", "_temp.html")
+        
+        # 第 1 步：Markdown 轉 HTML
+        print(f"  🔄 步驟 1/2: Markdown → HTML")
+        if not convert_markdown_to_html(md_file, temp_html, css_to_use):
+            print(f"{Colors.RED}❌ HTML 轉換失敗{Colors.NC}")
+            return False
+        
+        # 第 2 步：HTML 轉 PDF
+        print(f"  🔄 步驟 2/2: HTML → PDF")
+        if not convert_html_to_pdf(temp_html, output_pdf):
+            print(f"{Colors.RED}❌ PDF 轉換失敗{Colors.NC}")
+            if os.path.exists(temp_html):
+                os.remove(temp_html)
+            return False
+        
+        # 清理臨時文件
+        if os.path.exists(temp_html):
+            os.remove(temp_html)
+        
+        print(f"\n{Colors.GREEN}✅ PDF 轉換完成！{Colors.NC}")
+        print(f"PDF 文件: {Colors.GREEN}{output_pdf}{Colors.NC}")
+        return True
+        
+    except Exception as e:
+        print(f"{Colors.RED}❌ PDF 轉換出錯: {e}{Colors.NC}")
+        return False
+    finally:
+        # 清理臨時固定的 CSS 文件
+        if temp_fixed_css and os.path.exists(temp_fixed_css):
+            try:
+                os.remove(temp_fixed_css)
+            except Exception as e:
+                print(f"{Colors.YELLOW}⚠️ 無法刪除臨時 CSS 文件: {e}{Colors.NC}")
     print("用法：")
     print("  md-translate-file <markdown_file>              # 翻譯 MD 文件")
     print("  md-translate-file <markdown_file> <output_file> # 指定輸出文件")

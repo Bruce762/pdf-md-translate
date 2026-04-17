@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-md-translate"
-version = "0.1.7"
-description = "使用 LLM 自動翻譯 PDF 與 Markdown 論文"
+version = "0.1.8"
+description = "文檔轉換和翻譯工具：PDF ↔ Markdown 轉換、LLM 翻譯、自定義樣式 PDF 生成"
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [
@@ -26,7 +26,8 @@ dependencies = [
     "openai",
     "google-genai",
     "tqdm",
-    "mineru[all]"
+    "mineru[all]",
+    "pypandoc>=1.11"
 ]
 
 
@@ -42,3 +43,6 @@ Repository = "https://github.com/Bruce762/pdf-md-translate.git"
 [tool.setuptools]
 include-package-data = true
 packages = ["md_translator"]
+
+[tool.setuptools.package-data]
+md_translator = ["*.css", "*.json"]

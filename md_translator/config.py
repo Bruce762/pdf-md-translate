@@ -30,7 +30,7 @@ class ConfigManager:
     def _default_config(self) -> dict:
         """默认配置"""
         return {
-            "api_provider": "gemini",  # 'gemini' 或 'openai'
+            "api_provider": "openai",  # 'gemini' 或 'openai'
             "gemini_api_key": "",
             "openai_api_key": "",
             "target_language": "繁體中文"  # 目标翻译语言
