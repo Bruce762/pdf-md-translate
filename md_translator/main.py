@@ -339,30 +339,36 @@ def translate_markdown(file_path, target_language="繁體中文"):
     
     print(f"\n✅ 翻譯完成！儲存路徑：{output_path}")
 
-def convert_pdf_with_mineru(pdf_file, output_dir):
+def convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=False):
     """
     使用 mineru 將 PDF 轉換為 Markdown
     返回生成的 MD 文件路徑
+    use_cpu: 使用 CPU 模式執行 mineru（加上 -b pipeline 參數）
     """
     if not os.path.exists(pdf_file):
         print(f"{Colors.RED}❌ 錯誤：找不到 PDF 文件 '{pdf_file}'{Colors.NC}")
         return None
-    
+
     pdf_basename = Path(pdf_file).stem  # 文件名不含路徑和副檔名
-    
+
     print(f"{Colors.GREEN}========================================{Colors.NC}")
     print(f"{Colors.GREEN}開始處理：{pdf_basename}{Colors.NC}")
     print(f"{Colors.GREEN}輸出目錄：{output_dir}{Colors.NC}")
+    if use_cpu:
+        print(f"{Colors.GREEN}執行模式：CPU（pipeline 後端）{Colors.NC}")
     print(f"{Colors.GREEN}========================================{Colors.NC}")
-    
+
     # 第 1 步：使用 mineru 轉換 PDF
     print(f"\n{Colors.YELLOW}📄 第 1 步：使用 mineru 轉換 PDF...{Colors.NC}")
     temp_output = tempfile.mkdtemp(prefix="mineru_output_")
-    
+
     try:
-        print(f"{Colors.YELLOW}執行命令: mineru -p {pdf_file} -o {temp_output}{Colors.NC}\n")
+        mineru_cmd = ["mineru", "-p", pdf_file, "-o", temp_output]
+        if use_cpu:
+            mineru_cmd += ["-b", "pipeline"]
+        print(f"{Colors.YELLOW}執行命令: {' '.join(mineru_cmd)}{Colors.NC}\n")
         result = subprocess.run(
-            ["mineru", "-p", pdf_file, "-o", temp_output],
+            mineru_cmd,
             text=True
         )
         
@@ -528,6 +534,7 @@ def print_usage():
     print("  --no-translate      跳過翻譯步驟")
     print("  --lang [LANGUAGE]   指定目標翻譯語言")
     print("  --css [FILE]        指定自定義 CSS 文件（用於 PDF 轉換的樣式）")
+    print("  --cpu               使用 CPU 模式執行 mineru（加上 -b pipeline 參數）")
     print()
     print(f"{Colors.YELLOW}功能矩陣：{Colors.NC}")
     print("  PDF → MD 轉換: PDF 文件自動使用 mineru 轉換")
@@ -580,19 +587,22 @@ def interactive_language_select():
 def parse_command_flags(args):
     """
     解析命令行參數
-    返回：(only_markdown, skip_translate, target_language, css_file)
+    返回：(only_markdown, skip_translate, target_language, css_file, use_cpu)
     """
     only_markdown = False  # -m 參數
     skip_translate = False  # --no-translate 參數
     target_language = None  # --lang 參數值
     css_file = None  # --css 參數值
-    
+    use_cpu = False  # --cpu 參數
+
     # 掃描參數
     for i, arg in enumerate(args):
         if arg in ["-m", "--md-only"]:
             only_markdown = True
         elif arg == "--no-translate":
             skip_translate = True
+        elif arg == "--cpu":
+            use_cpu = True
         elif arg in ["--lang", "-l"]:
             # 檢查是否有語言參數跟在後面
             if i + 1 < len(args) and not args[i + 1].startswith("-"):
@@ -604,12 +614,12 @@ def parse_command_flags(args):
             # 檢查是否有 CSS 文件路徑跟在後面
             if i + 1 < len(args) and not args[i + 1].startswith("-"):
                 css_file = args[i + 1]
-    
+
     # 如果沒指定語言，使用默認值
     if target_language is None:
         target_language = config_manager.get_target_language()
-    
-    return only_markdown, skip_translate, target_language, css_file
+
+    return only_markdown, skip_translate, target_language, css_file, use_cpu
 
 def main():
     """程式進入點 - 支持 PDF 和 Markdown 文件"""
@@ -653,20 +663,20 @@ def main():
     input_file = sys.argv[1]
     
     # 解析命令參數
-    only_markdown, skip_translate, target_language, css_file = parse_command_flags(sys.argv[2:])
-    
+    only_markdown, skip_translate, target_language, css_file, use_cpu = parse_command_flags(sys.argv[2:])
+
     # 檢查文件是否存在
     if not os.path.exists(input_file):
         print(f"{Colors.RED}❌ 錯誤：找不到檔案 {input_file}{Colors.NC}")
         return
-    
+
     # 根據文件類型和參數決定操作
     is_pdf = input_file.lower().endswith('.pdf')
     is_md = input_file.lower().endswith('.md')
-    
+
     if is_pdf:
         # PDF 文件：可能需要轉 MD + 翻譯 + 轉 PDF
-        _handle_pdf_file(input_file, target_language, only_markdown, skip_translate, css_file)
+        _handle_pdf_file(input_file, target_language, only_markdown, skip_translate, css_file, use_cpu)
     elif is_md:
         # Markdown 文件：可能需要翻譯 + 轉 PDF
         _handle_md_file(input_file, target_language, only_markdown, skip_translate, css_file)
@@ -676,12 +686,13 @@ def main():
         return
 
 
-def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_translate=False, css_file=None):
+def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_translate=False, css_file=None, use_cpu=False):
     """
     處理 PDF 文件
     only_markdown: -m 參數，只輸出 MD，不轉 PDF
     skip_translate: --no-translate 參數，跳過翻譯
     css_file: 自定義 CSS 文件路徑
+    use_cpu: --cpu 參數，使用 CPU 模式執行 mineru
     """
     output_dir = "."
     
@@ -706,7 +717,7 @@ def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_transl
     print(f"{Colors.GREEN}========================================{Colors.NC}\n")
     
     # 第 1 步：轉換 PDF 為 MD
-    md_file = convert_pdf_with_mineru(pdf_file, output_dir)
+    md_file = convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=use_cpu)
     
     if not md_file:
         print(f"{Colors.RED}❌ PDF 轉換失敗{Colors.NC}")
@@ -752,7 +763,7 @@ def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_transl
     if only_markdown:
         print(f"輸出文件: {Colors.GREEN}{md_file}{Colors.NC}")
     else:
-        output_pdf = md_file.replace(".md", "_trans.pdf")
+        output_pdf = re.sub(r'(_trans)?\.md$', '_trans.pdf', md_file)
         print(f"輸出文件: {Colors.GREEN}{output_pdf}{Colors.NC}")
     print()
 
@@ -829,10 +840,10 @@ def _handle_md_file(md_file, target_language, only_markdown=False, skip_translat
         # 計算 PDF 文件名
         if skip_translate:
             # 未翻譯，使用原始 MD 文件名
-            output_pdf = md_file.replace(".md", "_trans.pdf")
+            output_pdf = re.sub(r'(_trans)?\.md$', '_trans.pdf', md_file)
         else:
             # 已翻譯，使用翻譯後的 MD 文件名對應的 PDF
-            output_pdf = final_md_file.replace(".md", "_trans.pdf")
+            output_pdf = re.sub(r'(_trans)?\.md$', '_trans.pdf', final_md_file)
         print(f"輸出文件: {Colors.GREEN}{output_pdf}{Colors.NC}")
     print()
 
@@ -945,7 +956,7 @@ def _convert_translated_to_pdf(md_file, css_file=None):
                 temp_fixed_css = css_to_use
         
         # 生成輸出 PDF 文件名
-        output_pdf = md_file.replace(".md", "_trans.pdf")
+        output_pdf = re.sub(r'(_trans)?\.md$', '_trans.pdf', md_file)
         
         # 創建臨時 HTML 文件
         temp_html = md_file.replace(".md", "_temp.html")

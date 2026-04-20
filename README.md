@@ -190,11 +190,13 @@ md-translate --lang
 | `--no-translate`              | -    | 跳過翻譯，只進行轉換             | `md-translate file.pdf --no-translate`  |
 | `--lang LANG`                 | `-l` | 指定目標翻譯語言                 | `md-translate file.md --lang 日本語`    |
 | `--css FILE` / `--style FILE` | -    | 指定自定義 CSS 文件用於 PDF 樣式 | `md-translate file.md --css custom.css` |
+| `--cpu`                       | -    | 使用 CPU 模式執行 mineru（加上 `-b pipeline` 參數），適合無 GPU 環境 | `md-translate file.pdf --cpu` |
 
 > 💡 **提示**：
 >
 > - `-l` 是 `--lang` 的簡寫，使用方式相同
 > - `--css` 和 `--style` 是同義詞，功能完全相同
+> - `--cpu` 僅對 PDF 輸入有效，MD 文件不需要此參數
 
 ### 參數特點
 
@@ -290,6 +292,10 @@ md-translate thesis.pdf -m --no-translate
 # Markdown 翻譯成日文（無 PDF）
 md-translate article.md -m --lang 日本語
 
+# 使用 CPU 模式轉換 PDF（無 GPU 環境）
+md-translate file.pdf --cpu
+md-translate file.pdf --cpu -m --no-translate  # CPU 模式，只輸出 MD，不翻譯
+
 # 參數順序可任意
 md-translate file.pdf --lang 簡體中文 --css custom.css -m
 md-translate file.pdf -m --css custom.css --lang 簡體中文  # 同一效果
@@ -299,13 +305,15 @@ md-translate file.pdf -m --css custom.css --lang 簡體中文  # 同一效果
 
 ### PDF 文件操作
 
-| 命令                                      | 輸入 | 操作                       | 輸出             |
-| ----------------------------------------- | ---- | -------------------------- | ---------------- |
-| `md-translate file.pdf`                   | PDF  | PDF→MD→翻譯→PDF            | `file_trans.pdf` |
-| `md-translate file.pdf -m`                | PDF  | PDF→MD→翻譯                | `file_trans.md`  |
-| `md-translate file.pdf --no-translate`    | PDF  | PDF→MD→PDF                 | `file_trans.pdf` |
-| `md-translate file.pdf -m --no-translate` | PDF  | PDF→MD                     | `file_trans.md`  |
-| `md-translate file.pdf --css custom.css`  | PDF  | PDF→MD→翻譯→PDF(自定義CSS) | `file_trans.pdf` |
+| 命令                                          | 輸入 | 操作                       | 輸出             |
+| --------------------------------------------- | ---- | -------------------------- | ---------------- |
+| `md-translate file.pdf`                       | PDF  | PDF→MD→翻譯→PDF            | `file_trans.pdf` |
+| `md-translate file.pdf -m`                    | PDF  | PDF→MD→翻譯                | `file_trans.md`  |
+| `md-translate file.pdf --no-translate`        | PDF  | PDF→MD→PDF                 | `file_trans.pdf` |
+| `md-translate file.pdf -m --no-translate`     | PDF  | PDF→MD                     | `file_trans.md`  |
+| `md-translate file.pdf --css custom.css`      | PDF  | PDF→MD→翻譯→PDF(自定義CSS) | `file_trans.pdf` |
+| `md-translate file.pdf --cpu`                 | PDF  | PDF→MD→翻譯→PDF（CPU模式） | `file_trans.pdf` |
+| `md-translate file.pdf --cpu -m --no-translate` | PDF  | PDF→MD（CPU模式）         | `file_trans.md`  |
 
 ### Markdown 文件操作
 

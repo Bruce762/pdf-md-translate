@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-md-translate"
-version = "0.1.8"
+version = "0.1.9"
 description = "文檔轉換和翻譯工具：PDF ↔ Markdown 轉換、LLM 翻譯、自定義樣式 PDF 生成"
 readme = "README.md"
 requires-python = ">=3.8"
