@@ -751,6 +751,16 @@ def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_transl
         # 刪除原始轉換的 MD 文件（如果與最終不同）
         if original_md != md_file and os.path.exists(original_md):
             os.remove(original_md)
+        # 刪除本次轉換產生的圖片子資料夾（輸出為 PDF 時不需保留）
+        pdf_basename = Path(pdf_file).stem
+        images_dir = os.path.join(output_dir, "images", pdf_basename)
+        if os.path.exists(images_dir):
+            shutil.rmtree(images_dir)
+            print(f"{Colors.YELLOW}🧹 已刪除圖片資料夾：{images_dir}{Colors.NC}")
+        # 若 images/ 目錄因此變空，一併刪除
+        images_base = os.path.join(output_dir, "images")
+        if os.path.exists(images_base) and not os.listdir(images_base):
+            os.rmdir(images_base)
     else:
         # 當 -m 已設置時，刪除原始轉換的 MD（只保留翻譯後的 _trans.md）
         if original_md != md_file and os.path.exists(original_md):

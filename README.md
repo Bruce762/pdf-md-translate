@@ -203,6 +203,7 @@ md-translate --lang
 > - `-l` 是 `--lang` 的簡寫，使用方式相同
 > - `--css` 和 `--style` 是同義詞，功能完全相同
 > - `--cpu` 僅對 PDF 輸入有效，MD 文件不需要此參數
+> - 🍎 **Mac 用戶建議**：建議 macOS 用戶在處理 PDF 時加上 `--cpu` 參數，可避免因 GPU 驅動相容性問題導致轉換失敗
 
 ### 參數特點
 
@@ -423,6 +424,16 @@ md-translate file.md --style my_style.css
 - ✅ **列印最佳化**：自動添加打印樣式確保 PDF 效果
 - ✅ **CSS 變量支持**：支持 `--bg-color` 等 CSS 變量
 - ✅ **無修改原文件**：自定義 CSS 文件不會被修改
+
+### 以 default.css 為參考範本
+
+套件內建的 [`default.css`](https://github.com/Bruce762/markdown_translator/blob/main/md_translator/default.css) 是一個完整的 CSS 範例，包含字體、顏色、版面、圖片大小等所有設定，可以直接複製後修改：
+
+```bash
+cp default.css my_style.css
+# 修改 my_style.css ...
+md-translate file.md --css my_style.css
+```
 
 ### CSS 文件示例
 
@@ -715,6 +726,8 @@ md-translate file.md --css light-theme.css   # 使用淺色主題
 - 為打印優化樣式
 - 不修改原始 CSS 文件
 
+可以直接參考套件內建的 [`default.css`](https://github.com/Bruce762/markdown_translator/blob/main/md_translator/default.css) 作為起點，複製後修改成自己想要的樣式。
+
 ### Q: 為什麼所有輸出文件都要加 `_trans` 後綴？
 
 A: 使用 `_trans` 後綴有以下優點：
@@ -749,6 +762,16 @@ A: 這是正常行為。系統的邏輯是：
 A: 是的！**所有原始輸入文件（PDF 或 MD）都會被保留**。
 
 系統只會刪除過程中的臨時文件（如 HTML）。
+
+### Q: Mac 用戶需要使用 `--cpu` 嗎？
+
+A: **建議加上**。macOS 通常沒有 NVIDIA GPU，mineru 在預設模式下可能因 GPU 驅動不相容而失敗或效能異常。加上 `--cpu` 可強制使用 CPU 模式，穩定性更高：
+
+```bash
+md-translate file.pdf --cpu
+md-translate file.pdf --cpu --lang 繁體中文
+md-translate file.pdf --cpu -m --no-translate
+```
 
 ### Q: 可以同時翻譯多個文件嗎？
 
