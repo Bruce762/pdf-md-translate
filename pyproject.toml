@@ -45,4 +45,4 @@ include-package-data = true
 packages = ["md_translator"]
 
 [tool.setuptools.package-data]
-md_translator = ["*.css", "*.json"]
+md_translator = ["*.css", "*.json", "default/*.woff2", "github/*.woff2"]

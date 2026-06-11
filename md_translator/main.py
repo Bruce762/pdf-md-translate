@@ -18,6 +18,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 導入配置管理模塊
 from .config import config_manager
 
+def get_mineru_version():
+    """獲取已安裝的 mineru 版本，取不到時返回 None"""
+    try:
+        from importlib.metadata import version, PackageNotFoundError
+        try:
+            return version("mineru")
+        except PackageNotFoundError:
+            return None
+    except Exception:
+        return None
+
 # 動態導入 convert_to_pdf 函數（兼容不同的導入路徑）
 def import_pdf_converter():
     """動態導入 convert_to_pdf 函數"""
@@ -339,11 +350,13 @@ def translate_markdown(file_path, target_language="繁體中文"):
     
     print(f"\n✅ 翻譯完成！儲存路徑：{output_path}")
 
-def convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=False):
+def convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=False, ocr_lang="en"):
     """
     使用 mineru 將 PDF 轉換為 Markdown
     返回生成的 MD 文件路徑
     use_cpu: 使用 CPU 模式執行 mineru（加上 -b pipeline 參數）
+    ocr_lang: mineru OCR 語言（-l 參數）。預設 en，避開 ch 表格識別模型
+              與字典錯配導致的崩潰（IndexError: index 15631 ...）。
     """
     if not os.path.exists(pdf_file):
         print(f"{Colors.RED}❌ 錯誤：找不到 PDF 文件 '{pdf_file}'{Colors.NC}")
@@ -354,8 +367,13 @@ def convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=False):
     print(f"{Colors.GREEN}========================================{Colors.NC}")
     print(f"{Colors.GREEN}開始處理：{pdf_basename}{Colors.NC}")
     print(f"{Colors.GREEN}輸出目錄：{output_dir}{Colors.NC}")
+    mineru_version = get_mineru_version()
+    print(f"{Colors.GREEN}mineru 版本：{mineru_version or '未知（找不到 mineru 套件）'}{Colors.NC}")
     if use_cpu:
-        print(f"{Colors.GREEN}執行模式：CPU（pipeline 後端）{Colors.NC}")
+        print(f"{Colors.YELLOW}執行模式：CPU（pipeline 後端）{Colors.NC}")
+        print(f"{Colors.YELLOW}⚠️  pipeline 後端的結構／程式碼辨識較弱；移除 --cpu 會改用精度更高的 VLM 後端{Colors.NC}")
+    if ocr_lang:
+        print(f"{Colors.GREEN}OCR 語言：{ocr_lang}{Colors.NC}")
     print(f"{Colors.GREEN}========================================{Colors.NC}")
 
     # 第 1 步：使用 mineru 轉換 PDF
@@ -366,6 +384,8 @@ def convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=False):
         mineru_cmd = ["mineru", "-p", pdf_file, "-o", temp_output]
         if use_cpu:
             mineru_cmd += ["-b", "pipeline"]
+        if ocr_lang:
+            mineru_cmd += ["-l", ocr_lang]
         print(f"{Colors.YELLOW}執行命令: {' '.join(mineru_cmd)}{Colors.NC}\n")
         result = subprocess.run(
             mineru_cmd,
@@ -517,6 +537,7 @@ def print_usage():
     print(f"{Colors.GREEN}自定義 CSS 樣式：{Colors.NC}")
     print("  md-translate file.md --css style.css         # 使用自定義 CSS")
     print("  md-translate file.pdf --css custom.css -m   # PDF → MD + 自定義樣式")
+    print("  md-translate file.md --no-css                # 使用內建 GitHub 主題（Open Sans）")
     print()
     print(f"{Colors.GREEN}組合用法：{Colors.NC}")
     print("  md-translate file.pdf -m --no-translate # PDF → MD，無翻譯")
@@ -534,6 +555,7 @@ def print_usage():
     print("  --no-translate      跳過翻譯步驟")
     print("  --lang [LANGUAGE]   指定目標翻譯語言")
     print("  --css [FILE]        指定自定義 CSS 文件（用於 PDF 轉換的樣式）")
+    print("  --no-css            使用內建 GitHub 主題 CSS（GitHub 風格、Open Sans 字體）")
     print("  --cpu               使用 CPU 模式執行 mineru（加上 -b pipeline 參數）")
     print()
     print(f"{Colors.YELLOW}功能矩陣：{Colors.NC}")
@@ -587,13 +609,14 @@ def interactive_language_select():
 def parse_command_flags(args):
     """
     解析命令行參數
-    返回：(only_markdown, skip_translate, target_language, css_file, use_cpu)
+    返回：(only_markdown, skip_translate, target_language, css_file, use_cpu, ocr_lang)
     """
     only_markdown = False  # -m 參數
     skip_translate = False  # --no-translate 參數
     target_language = None  # --lang 參數值
     css_file = None  # --css 參數值
     use_cpu = False  # --cpu 參數
+    ocr_lang = "en"  # --ocr-lang 參數值（mineru OCR 語言），預設 en
 
     # 掃描參數
     for i, arg in enumerate(args):
@@ -614,12 +637,20 @@ def parse_command_flags(args):
             # 檢查是否有 CSS 文件路徑跟在後面
             if i + 1 < len(args) and not args[i + 1].startswith("-"):
                 css_file = args[i + 1]
+        elif arg == "--no-css":
+            # 使用內建 github 主題 CSS（Open Sans 字體，GitHub 風格）
+            pkg_dir = os.path.dirname(__file__)
+            css_file = os.path.join(pkg_dir, "github.css")
+        elif arg == "--ocr-lang":
+            # mineru OCR 語言（傳給 -l）。例如 ch / en / japan ...
+            if i + 1 < len(args) and not args[i + 1].startswith("-"):
+                ocr_lang = args[i + 1]
 
     # 如果沒指定語言，使用默認值
     if target_language is None:
         target_language = config_manager.get_target_language()
 
-    return only_markdown, skip_translate, target_language, css_file, use_cpu
+    return only_markdown, skip_translate, target_language, css_file, use_cpu, ocr_lang
 
 def main():
     """程式進入點 - 支持 PDF 和 Markdown 文件"""
@@ -663,7 +694,7 @@ def main():
     input_file = sys.argv[1]
     
     # 解析命令參數
-    only_markdown, skip_translate, target_language, css_file, use_cpu = parse_command_flags(sys.argv[2:])
+    only_markdown, skip_translate, target_language, css_file, use_cpu, ocr_lang = parse_command_flags(sys.argv[2:])
 
     # 檢查文件是否存在
     if not os.path.exists(input_file):
@@ -676,7 +707,7 @@ def main():
 
     if is_pdf:
         # PDF 文件：可能需要轉 MD + 翻譯 + 轉 PDF
-        _handle_pdf_file(input_file, target_language, only_markdown, skip_translate, css_file, use_cpu)
+        _handle_pdf_file(input_file, target_language, only_markdown, skip_translate, css_file, use_cpu, ocr_lang)
     elif is_md:
         # Markdown 文件：可能需要翻譯 + 轉 PDF
         _handle_md_file(input_file, target_language, only_markdown, skip_translate, css_file)
@@ -686,13 +717,14 @@ def main():
         return
 
 
-def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_translate=False, css_file=None, use_cpu=False):
+def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_translate=False, css_file=None, use_cpu=False, ocr_lang="en"):
     """
     處理 PDF 文件
     only_markdown: -m 參數，只輸出 MD，不轉 PDF
     skip_translate: --no-translate 參數，跳過翻譯
     css_file: 自定義 CSS 文件路徑
     use_cpu: --cpu 參數，使用 CPU 模式執行 mineru
+    ocr_lang: --ocr-lang 參數，mineru OCR 語言（預設 en）
     """
     output_dir = "."
     
@@ -717,7 +749,7 @@ def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_transl
     print(f"{Colors.GREEN}========================================{Colors.NC}\n")
     
     # 第 1 步：轉換 PDF 為 MD
-    md_file = convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=use_cpu)
+    md_file = convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=use_cpu, ocr_lang=ocr_lang)
     
     if not md_file:
         print(f"{Colors.RED}❌ PDF 轉換失敗{Colors.NC}")
