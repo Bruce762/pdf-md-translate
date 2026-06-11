@@ -107,6 +107,12 @@ md-translate -s
 md-translate your_file.md
 ```
 
+m系列晶片的mac推薦使用指令 `--cpu` 以使用cpu來進行轉換會比較快速
+
+```bash
+md-translate your_file.md --cpu
+```
+
 #### 翻譯 PDF 文件
 
 預設會翻成繁體中文
