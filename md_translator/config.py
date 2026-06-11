@@ -92,8 +92,8 @@ class ConfigManager:
         
         # 選擇 API 提供商
         print("選擇 API 提供商:")
-        print("1. OpenAI (推薦)")
-        print("2. Gemini (較慢)")
+        print("1. OpenAI")
+        print("2. Gemini")
         choice = input("請輸入選擇 (1 或 2) [默認: 1]: ").strip() or "1"
         
         if choice == "1":
@@ -128,41 +128,77 @@ class ConfigManager:
                 print("❌ 未找到 OpenAI API Key")
                 self.setup_wizard()
     
+    def _provider_submenu(self, provider: str):
+        """顯示單一提供商的子選單"""
+        is_openai = provider == "openai"
+        name = "OpenAI" if is_openai else "Gemini"
+        has_key = bool(self.get_openai_api_key() if is_openai else self.get_gemini_api_key())
+        is_current = self.get_api_provider() == provider
+        key_status = "✅ 已設定" if has_key else "❌ 未設定"
+        current_status = "（目前使用中）" if is_current else ""
+
+        while True:
+            print(f"\n{'─'*50}")
+            print(f"  {name} 設定 {current_status}")
+            print(f"{'─'*50}")
+            print(f"  1. 輸入 API Key  [{key_status}]")
+            print(f"  2. 選擇此提供商")
+            print(f"  3. 返回")
+            sub = input("\n請輸入選擇 (1-3): ").strip()
+
+            if sub == "1":
+                if has_key:
+                    confirm = input(f"\n  目前已有 {name} API Key，是否要更新？(y/N): ").strip().lower()
+                    if confirm != "y":
+                        print("  ⚠️  已跳過")
+                        continue
+                if is_openai:
+                    print("  取得地址: https://platform.openai.com/api-keys")
+                    api_key = input("  請輸入 OpenAI API Key: ").strip()
+                    if api_key:
+                        self.set_openai_api_key(api_key)
+                        has_key = True
+                    else:
+                        print("  ⚠️  已跳過")
+                else:
+                    print("  取得地址: https://aistudio.google.com/apikey")
+                    api_key = input("  請輸入 Gemini API Key: ").strip()
+                    if api_key:
+                        self.set_gemini_api_key(api_key)
+                        has_key = True
+                    else:
+                        print("  ⚠️  已跳過")
+
+            elif sub == "2":
+                self.set_api_provider(provider)
+                is_current = True
+                current_status = "（目前使用中）"
+
+            elif sub == "3":
+                break
+
     def reconfigure(self):
-        """重新配置 - 簡化為兩步"""
-        print("\n" + "="*50)
-        print("⚙️ API 配置")
-        print("="*50 + "\n")
-        
-        # 第一步：選擇 API 提供商
-        print("選擇 API 提供商：")
-        print("1. OpenAI (推薦)")
-        print("2. Gemini (較慢)")
-        provider_choice = input("\n請輸入選擇 (1 或 2) [默認: 1]: ").strip() or "1"
-        
-        # 第二步：輸入 API Key
-        if provider_choice == "1":
-            self.set_api_provider("openai")
-            print("\n🔑 OpenAI API Key 設置")
-            print("取得地址: https://platform.openai.com/api-keys")
-            api_key = input("\n請輸入 OpenAI API Key: ").strip()
-            if api_key:
-                self.set_openai_api_key(api_key)
-                print("✅ 配置完成！")
-            else:
-                print("⚠️  已跳過")
-        else:
-            self.set_api_provider("gemini")
-            print("\n🔑 Gemini API Key 設置")
-            print("取得地址: https://aistudio.google.com/apikey")
-            api_key = input("\n請輸入 Gemini API Key: ").strip()
-            if api_key:
-                self.set_gemini_api_key(api_key)
-                print("✅ 配置完成！")
-            else:
-                print("⚠️  已跳過")
-        
-        print()
+        """重新配置"""
+        while True:
+            current = self.get_api_provider()
+            openai_mark = " ✅" if current == "openai" else ""
+            gemini_mark = " ✅" if current == "gemini" else ""
+            print("\n" + "="*50)
+            print("⚙️  API 配置")
+            print("="*50)
+            print("\n  選擇 API 提供商：")
+            print(f"  1. OpenAI{openai_mark}")
+            print(f"  2. Gemini{gemini_mark}")
+            print("  3. 退出設定")
+            choice = input("\n請輸入選擇 (1-3) [默認: 3]: ").strip() or "3"
+
+            if choice == "1":
+                self._provider_submenu("openai")
+            elif choice == "2":
+                self._provider_submenu("gemini")
+            elif choice == "3":
+                print("\n  已退出設定。\n")
+                break
     
     def show_config_file_location(self):
         """显示配置文件位置"""

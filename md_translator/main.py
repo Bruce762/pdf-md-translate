@@ -67,8 +67,7 @@ gemini_client = None
 
 # 模型配置
 OPENAI_MODEL = "gpt-5.4-mini"
-GEMINI_MODEL = "gemini-2.5-flash"
-
+GEMINI_MODEL = "gemini-3.1-flash-lite"
 # 顏色定義
 class Colors:
     RED = '\033[0;31m'
@@ -281,8 +280,8 @@ def translate_markdown(file_path, target_language="繁體中文"):
     # 根據 API 提供商設置不同的線程數
     provider = config_manager.get_api_provider()
     if provider == "gemini":
-        num_threads = 1
-        thread_desc = f"📊 使用 1 個線程並發翻譯 (Gemini)...\n"
+        num_threads = 5
+        thread_desc = f"📊 使用 5 個線程並發翻譯 (Gemini)...\n"
     else:  # openai
         num_threads = 5
         thread_desc = f"📊 使用 5 個線程並發翻譯 (OpenAI)...\n"

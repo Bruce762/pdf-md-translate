@@ -38,14 +38,12 @@ pip install pdf-md-translate
 md-translate --setup
 ```
 
-依照提示：選擇 API 提供商 → 輸入 API Key → 設定預設翻譯語言。只需做一次。
+互動式選單：選擇提供商 → 輸入 API Key 或切換使用中的提供商，可隨時重新進入修改。
 
-| 提供商 | 模型 | 特點 |
-| --- | --- | --- |
-| **OpenAI** ⭐（預設） | `gpt-5.4-mini` | 翻譯質量最好，需付費 |
-| **Google Gemini** | `gemini-2.5-flash` | 免費額度充足，速度較慢 |
-
-> 沒有 OpenAI 額度？在設定時選 Gemini 即可免費使用。
+| 提供商 | 模型 |
+| --- | --- |
+| **OpenAI**（預設） | `gpt-5.4-mini` |
+| **Google Gemini** | `gemini-3.1-flash-lite` |
 
 ---
 
@@ -325,7 +323,7 @@ md-translate file.pdf
 <details>
 <summary><b>翻譯很慢</b></summary>
 
-正常現象，速度取決於檔案大小、網路、與 LLM。OpenAI 用 5 線程並發，Gemini 用 1 線程，請耐心等待。
+正常現象，速度取決於檔案大小、網路、與 LLM。OpenAI 和 Gemini 都用 5 線程並發，請耐心等待。
 </details>
 
 ---
