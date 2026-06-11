@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-md-translate"
-version = "0.1.10"
+version = "0.1.2"
 description = "文檔轉換和翻譯工具：PDF ↔ Markdown 轉換、LLM 翻譯、自定義樣式 PDF 生成"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10,<3.14"
 authors = [
     {name = "Bruce762", email = "a0909861061@gmail.com"}
 ]
@@ -17,17 +17,17 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: GNU Affero General Public License v3",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "openai",
-    "google-genai",
-    "tqdm",
-    "mineru[all]",
-    "pypandoc>=1.11"
+    "openai==2.31.0",
+    "google-genai==1.73.0",
+    "tqdm==4.67.3",
+    "mineru[all]==3.0.9",
+    "pypandoc==1.17"
 ]
 
 
@@ -45,4 +45,4 @@ include-package-data = true
 packages = ["md_translator"]
 
 [tool.setuptools.package-data]
-md_translator = ["*.css", "*.json", "default/*.woff2", "github/*.woff2"]
+md_translator = ["*.css", "*.json", "default/*.woff2", "github/*.woff2", "night/*.css"]

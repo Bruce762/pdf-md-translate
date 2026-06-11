@@ -1,854 +1,367 @@
 # pdf-md-translate
 
-一個強大的文檔轉換和翻譯工具，可以：
+把 **PDF / Markdown 論文翻譯成你要的語言**，並輸出排版好看的 PDF。
 
-1. **將 PDF 轉換為 Markdown 文件** - 自動提取 PDF 中的文本和結構，轉換為易於編輯的 Markdown 格式
-2. **將文件中的原文翻譯成多種語言** - 使用 LLM（大型語言模型）自動翻譯 PDF 與 Markdown 論文
-3. **將 Markdown 轉換為 PDF** - 支持自定義樣式的 PDF 生成，完成 PDF → MD → PDF 的完整轉換流程
-
-支持 OpenAI GPT 和 Google Gemini 模型進行高質量的學術論文翻譯。
-
-## 功能特性
-
-- 🤖 **多模型支持**：支持 OpenAI GPT 和 Google Gemini
-- 📄 **多格式支持**：支持 PDF 和 Markdown 文件翻譯
-- 🧮 **公式保護**：自動保留 LaTeX 數學公式，不進行翻譯
-- 🌍 **多語言翻譯**：支持自定義目標翻譯語言
-- ⚡ **並發處理**：使用多執行緒加速翻譯效能
-- ⚙️ **靈活配置**：交互式配置管理，安全存儲 API Key
-
-## 安裝
-
-### 前置要求
-
-- Python >= 3.8
-- 有效的 OpenAI API Key 或 Google Gemini API Key
-- **Google Chrome 或 Chromium**（用於 PDF 生成）
-
-#### 安裝 Chrome / Chromium
-
-**macOS**：
+支持 OpenAI GPT 與 Google Gemini，自動保留 LaTeX 公式、程式碼與表格。
 
 ```bash
-brew install --cask google-chrome
+pip install pdf-md-translate     # 1. 安裝
+md-translate --setup             # 2. 設定 API Key（第一次才需要）
+md-translate paper.pdf           # 3. 翻譯！輸出 paper_trans.pdf
 ```
 
-**Linux (Ubuntu/Debian)**：
+---
 
-```bash
-sudo apt-get install google-chrome-stable
-```
+## 安裝（3 步驟）
 
-或
+### 1. 安裝 Chrome（用來生成 PDF）
 
-```bash
-sudo apt-get install chromium-browser
-```
+| 系統 | 指令 |
+| --- | --- |
+| **macOS** | `brew install --cask google-chrome` |
+| **Linux** | `sudo apt-get install google-chrome-stable`（或 `chromium-browser`） |
+| **Windows** | 下載 [Google Chrome](https://www.google.com/chrome/) |
 
-**Windows**：
+> 只輸出 Markdown（加 `-m`）時不需要 Chrome。
 
-- 下載並安裝 [Google Chrome](https://www.google.com/chrome/)
-- 或使用 Chocolatey：`choco install googlechrome`
-
-### 安裝套件
+### 2. 安裝套件
 
 ```bash
 pip install pdf-md-translate
 ```
 
-或從源代碼安裝：
+需要 Python 3.10 ~ 3.13。Pandoc 會在第一次使用時自動下載，不用手動裝。
+
+### 3. 設定 API Key
 
 ```bash
-pip install -e .
+md-translate --setup
 ```
 
-## 快速開始
+依照提示：選擇 API 提供商 → 輸入 API Key → 設定預設翻譯語言。只需做一次。
 
-> ✅ **注意**：本工具支持兩個命令名稱，使用以下任一命令都可以：
+| 提供商 | 模型 | 特點 |
+| --- | --- | --- |
+| **OpenAI** ⭐（預設） | `gpt-5.4-mini` | 翻譯質量最好，需付費 |
+| **Google Gemini** | `gemini-2.5-flash` | 免費額度充足，速度較慢 |
+
+> 沒有 OpenAI 額度？在設定時選 Gemini 即可免費使用。
+
+---
+
+## 開始使用
+
+> 兩個命令完全等價：`md-translate`（別名）和 `pdf-md-translate`（套件名）。下面都用 `md-translate`。
+
+### 翻譯一個檔案
+
+```bash
+md-translate paper.pdf       # PDF → 翻譯 → 輸出 paper_trans.pdf
+md-translate paper.md        # Markdown → 翻譯 → 輸出 paper_trans.pdf
+```
+
+預設翻成**繁體中文**，輸出檔名固定加上 `_trans` 後綴，**不會覆蓋你的原始檔案**。
+
+### 指定翻譯語言
+
+```bash
+md-translate paper.pdf --lang 簡體中文
+md-translate paper.pdf -l English      # -l 是 --lang 的簡寫
+```
+
+常用語言：`繁體中文`、`簡體中文`、`English`、`日本語`、`한국어`…（LLM 支援的語言都可以試）
+
+### 只要 Markdown，不要 PDF
+
+```bash
+md-translate paper.pdf -m              # 輸出 paper_trans.md（不生成 PDF）
+```
+
+### 只轉檔不翻譯
+
+```bash
+md-translate paper.pdf --no-translate  # PDF → PDF，跳過翻譯
+```
+
+就這些。下面是進階選項與細節，需要時再看。
+
+---
+
+## 進階選項
+
+| 參數 | 簡寫 | 作用 |
+| --- | --- | --- |
+| `--lang LANG` | `-l` | 指定翻譯**目標**語言（不加則用預設） |
+| `--md-only` | `-m` | 只輸出 Markdown，不轉 PDF |
+| `--no-translate` | | 跳過翻譯，只做格式轉換 |
+| `--css FILE` | `--style FILE` | 用自訂 CSS 生成 PDF |
+| `--no-css` | | 用內建 **GitHub 風格主題**（白底、Open Sans） |
+| `--black-css` | | 用內建 **night 暗色主題**（深色背景、適合螢幕閱讀） |
+| `--cpu` | | PDF 轉檔改用輕量 CPU 後端（低資源備援，辨識較弱） |
+| `--ocr-lang LANG` | | PDF **原文**的 OCR 辨識語言（預設 `en`） |
+
+設定命令：
+
+| 命令 | 簡寫 | 作用 |
+| --- | --- | --- |
+| `md-translate --setup` | `-s` | 重新設定 API Key 與預設語言 |
+| `md-translate --config` | `-c` | 顯示設定檔位置 |
+| `md-translate --lang` | | 互動式選擇預設語言 |
+| `md-translate --help` | `-h` | 顯示說明 |
+
+**參數可任意順序、任意組合**，例如：
+
+```bash
+md-translate thesis.pdf --lang 繁體中文 --no-css
+md-translate file.pdf -m --no-translate --ocr-lang ch_lite
+```
+
+> ⚠️ **別把兩個「語言」搞混**：
+> - `--lang` / `-l` = 要翻成**什麼**語言（翻譯目標）
+> - `--ocr-lang` = PDF 原文**本身**是什麼語言（OCR 辨識來源）
 >
-> - `pdf-md-translate` - 套件名（推薦使用）
-> - `md-translate` - 別名（向後兼容）
+> 翻譯非英文論文時，要改的是 `--ocr-lang`，不是 `-l`。
 
-### 1. 初始配置
+---
 
-首次使用時，進行配置設置（輸入 API Key 和選擇偏好的 LLM 模型）：
+## 它做了什麼（處理流程）
 
-```bash
-md-translate --setup
+```
+PDF  ──(mineru)──►  Markdown  ──(LLM)──►  翻譯後 Markdown  ──(pandoc+Chrome)──►  PDF
+MD   ─────────────────────────(LLM)──►  翻譯後 Markdown  ──(pandoc+Chrome)──►  PDF
 ```
 
-或使用簡短命令：
-
-```bash
-md-translate -s
-```
-
-此命令會引導您：
-
-- 選擇 API 提供商（OpenAI 或 Google Gemini，**默認為 OpenAI**）
-- 輸入對應的 API Key
-- 設定預設翻譯語言
-
-#### API 提供商選擇指南
-
-| 提供商            | 模型               | 優點            | 缺點        | 適合           |
-| ----------------- | ------------------ | --------------- | ----------- | -------------- |
-| **OpenAI** ⭐     | `gpt-5.4-mini`     | 🥇 翻譯質量最好 | 💰 需要付費 | 論文、專業文檔 |
-| **Google Gemini** | `gemini-2.5-flash` | 🆓 免費額度充足 | ⚠️ 速度較慢 | 測試、批量翻譯 |
-
-> ⭐ **默認選項**：系統默認使用 OpenAI  
-> 💡 **提示**：如果沒有 OpenAI 額度，可以在配置時選擇切換到免費的 Gemini
-
-### 2. 翻譯文件
-
-#### 翻譯 Markdown 文件
-
-```bash
-md-translate your_file.md
-```
-
-m系列晶片的mac推薦使用指令 `--cpu` 以使用cpu來進行轉換會比較快速
-
-```bash
-md-translate your_file.md --cpu
-```
-
-#### 翻譯 PDF 文件
-
-預設會翻成繁體中文
-
-```bash
-md-translate your_file.pdf
-```
-
-#### 指定翻譯語言
-
-```bash
-md-translate your_file.md --lang 繁體中文
-```
-
-或使用簡短命令：
-
-```bash
-md-translate your_file.md -l 簡體中文
-```
-
-**支持的語言示例**：
-
-- 繁體中文
-- 簡體中文
-- English
-- 日本語
-- 한국어
-
-> ℹ️ **提示**：如果沒有指定 `--lang` 參數，預設會翻譯成 **繁體中文**
-
-### 3. 配置管理
-
-#### 查看配置文件位置
-
-```bash
-md-translate --config
-```
-
-或：
-
-```bash
-md-translate -c
-```
-
-配置文件位置：`~/.config/markdown-translator/config.json`
-
-#### 重新配置 API 和語言
-
-```bash
-md-translate --setup
-```
-
-#### 交互式語言選擇
-
-```bash
-md-translate --lang
-```
-
-此命令會進入交互式模式，讓您選擇翻譯語言。
-
-## 命令行參考
-
-> 💡 下表中所有 `md-translate` 命令均可替換為 `pdf-md-translate`（例如：`pdf-md-translate your_file.md`）
-
-### 主要命令
-
-| 命令                                    | 別名 | 用途                            |
-| --------------------------------------- | ---- | ------------------------------- |
-| `md-translate <file>`                   | -    | 翻譯指定的 PDF 或 Markdown 文件 |
-| `md-translate <file> --lang <language>` | `-l` | 翻譯文件並指定目標語言          |
-| `md-translate --setup`                  | `-s` | 進行初始設置和配置              |
-| `md-translate --config`                 | `-c` | 顯示配置文件位置                |
-| `md-translate --lang`                   | -    | 進入交互式語言選擇模式          |
-| `md-translate --help`                   | `-h` | 顯示幫助信息                    |
-
-### 高級參數
-
-| 參數                          | 簡寫 | 說明                             | 示例                                    |
-| ----------------------------- | ---- | -------------------------------- | --------------------------------------- |
-| `-m` / `--md-only`            | -    | 只輸出 Markdown，不轉換為 PDF    | `md-translate file.pdf -m`              |
-| `--no-translate`              | -    | 跳過翻譯，只進行轉換             | `md-translate file.pdf --no-translate`  |
-| `--lang LANG`                 | `-l` | 指定目標翻譯語言                 | `md-translate file.md --lang 日本語`    |
-| `--css FILE` / `--style FILE` | -    | 指定自定義 CSS 文件用於 PDF 樣式 | `md-translate file.md --css custom.css` |
-| `--cpu`                       | -    | 使用 CPU 模式執行 mineru（加上 `-b pipeline` 參數），適合無 GPU 環境 | `md-translate file.pdf --cpu` |
-
-> 💡 **提示**：
->
-> - `-l` 是 `--lang` 的簡寫，使用方式相同
-> - `--css` 和 `--style` 是同義詞，功能完全相同
-> - `--cpu` 僅對 PDF 輸入有效，MD 文件不需要此參數
-> - 🍎 **Mac 用戶建議**：建議 macOS 用戶在處理 PDF 時加上 `--cpu` 參數，可避免因 GPU 驅動相容性問題導致轉換失敗
-
-### 參數特點
-
-- ✅ **參數順序任意**：所有參數可以任意排列組合
-- ✅ **參數組合**：支持任意搭配多個參數
-- ✅ **向後兼容**：新參數不影響現有命令
-
-## 使用範例
-
-### 基礎用法
-
-#### 範例 1：翻譯英文 Markdown 論文為繁體中文
-
-```bash
-md-translate paper.md --lang 繁體中文
-```
-
-輸出文件：`paper_trans.pdf`
-
-> 說明：Markdown 翻譯後轉換為 PDF。只輸出最終 PDF 文件。
-
-#### 範例 2：翻譯 PDF 論文
-
-```bash
-md-translate research_paper.pdf
-```
-
-輸出文件：`research_paper_trans.pdf`
-
-> 說明：PDF 轉為 Markdown → 翻譯 → 轉換為 PDF。只輸出最終 PDF 文件。
-
-#### 範例 3：使用 OpenAI 而不是 Gemini
-
-首先重新配置：
-
-```bash
-md-translate --setup
-```
-
-選擇 `openai` 作為 API 提供商，然後：
-
-```bash
-md-translate document.md
-```
-
-### 高級用法
-
-#### 範例 4：只輸出 Markdown，不轉 PDF
-
-```bash
-md-translate paper.pdf -m
-```
-
-輸出文件：只有 `paper_trans.md`（不會生成 PDF）
-
-> 說明：此時只輸出翻譯後的 Markdown 文件。
-
-#### 範例 5：無翻譯的格式轉換
-
-```bash
-md-translate paper.pdf --no-translate
-```
-
-輸出文件：`paper_trans.pdf`（PDF 格式，未翻譯）
-
-#### 範例 6：指定語言，只輸出 Markdown
-
-```bash
-md-translate document.pdf -m --lang 簡體中文
-```
-
-輸出文件：`document_trans.md`（簡體中文版本）
-
-#### 範例 7：使用自定義 CSS 樣式
-
-```bash
-md-translate paper.md --css my_style.css
-```
-
-輸出文件：`paper_trans.pdf`（使用自定義 CSS 樣式生成的 PDF）
-
-> 說明：指定 CSS 樣式後，系統會自動應用到 PDF 中。中間的 MD 文件會被刪除，只保留最終 PDF。
-
-#### 範例 8：綜合示例（多參數組合）
-
-```bash
-# PDF → MD 翻譯 → 自定義樣式 PDF
-md-translate thesis.pdf --css dark-theme.css --lang 繁體中文
-
-# PDF → MD（只輸出 MD，無翻譯）
-md-translate thesis.pdf -m --no-translate
-
-# Markdown 翻譯成日文（無 PDF）
-md-translate article.md -m --lang 日本語
-
-# 使用 CPU 模式轉換 PDF（無 GPU 環境）
-md-translate file.pdf --cpu
-md-translate file.pdf --cpu -m --no-translate  # CPU 模式，只輸出 MD，不翻譯
-
-# 參數順序可任意
-md-translate file.pdf --lang 簡體中文 --css custom.css -m
-md-translate file.pdf -m --css custom.css --lang 簡體中文  # 同一效果
-```
-
-## 參數組合矩陣
-
-### PDF 文件操作
-
-| 命令                                          | 輸入 | 操作                       | 輸出             |
-| --------------------------------------------- | ---- | -------------------------- | ---------------- |
-| `md-translate file.pdf`                       | PDF  | PDF→MD→翻譯→PDF            | `file_trans.pdf` |
-| `md-translate file.pdf -m`                    | PDF  | PDF→MD→翻譯                | `file_trans.md`  |
-| `md-translate file.pdf --no-translate`        | PDF  | PDF→MD→PDF                 | `file_trans.pdf` |
-| `md-translate file.pdf -m --no-translate`     | PDF  | PDF→MD                     | `file_trans.md`  |
-| `md-translate file.pdf --css custom.css`      | PDF  | PDF→MD→翻譯→PDF(自定義CSS) | `file_trans.pdf` |
-| `md-translate file.pdf --cpu`                 | PDF  | PDF→MD→翻譯→PDF（CPU模式） | `file_trans.pdf` |
-| `md-translate file.pdf --cpu -m --no-translate` | PDF  | PDF→MD（CPU模式）         | `file_trans.md`  |
-
-### Markdown 文件操作
-
-| 命令                                     | 輸入 | 操作                | 輸出             |
-| ---------------------------------------- | ---- | ------------------- | ---------------- |
-| `md-translate file.md`                   | MD   | 翻譯→PDF            | `file_trans.pdf` |
-| `md-translate file.md -m`                | MD   | 翻譯                | `file_trans.md`  |
-| `md-translate file.md --no-translate`    | MD   | →PDF                | `file_trans.pdf` |
-| `md-translate file.md -m --no-translate` | MD   | 無操作              | 無               |
-| `md-translate file.md --css custom.css`  | MD   | 翻譯→PDF(自定義CSS) | `file_trans.pdf` |
-
-## 文件輸出說明
-
-### 文件命名規則
-
-所有輸出文件統一使用 `_trans` 後綴：
-
-- **翻譯 Markdown**：`file.md` → `file_trans.md`
-- **轉換 PDF**：`file.md` → `file_trans.pdf`
-- **PDF 轉 Markdown**：`file.pdf` → `file_trans.md`
-
-### 文件保留和刪除規則
-
-| 輸入     | 參數             | 輸出類型 | 最終保留文件                  | 刪除文件     |
-| -------- | ---------------- | -------- | ----------------------------- | ------------ |
-| PDF      | 默認             | PDF      | 原始 PDF<br/>`file_trans.pdf` | 中間 MD 文件 |
-| PDF      | `-m`             | MD       | 原始 PDF<br/>`file_trans.md`  | -            |
-| PDF      | `--no-translate` | PDF      | 原始 PDF<br/>`file_trans.pdf` | 中間 MD 文件 |
-| Markdown | 默認             | PDF      | 原始 MD<br/>`file_trans.pdf`  | 中間 MD 文件 |
-| Markdown | `-m`             | MD       | 原始 MD<br/>`file_trans.md`   | -            |
-| Markdown | `--no-translate` | PDF      | 原始 MD<br/>`file_trans.pdf`  | -            |
-
-### 重要提示
-
-✅ **所有原始輸入文件（PDF 或 MD）都會被保留**  
-❌ **中間的轉換文件會被刪除（如果最終輸出是 PDF）**  
-❌ **臨時文件（HTML、臨時 CSS 等）總是會被刪除**
-
-### 範例說明
-
-#### 範例 A：PDF → PDF 轉換
-
-```bash
-# 輸入: thesis.pdf
-md-translate thesis.pdf
-
-# 生成流程:
-# 1. thesis.pdf → thesis.md（中間文件，隨後刪除）
-# 2. thesis.md → thesis_trans.md（翻譯）
-# 3. thesis_trans.md → thesis_trans.pdf（最終輸出）
-
-# 最終保留: thesis.pdf（原始）、thesis_trans.pdf（輸出）
-# 最終刪除: thesis.md、thesis_trans.md（中間文件）
-```
-
-#### 範例 B：MD → PDF 轉換
-
-```bash
-# 輸入: paper.md
-md-translate paper.md
-
-# 生成流程:
-# 1. paper.md → paper_trans.md（翻譯）
-# 2. paper_trans.md → paper_trans.pdf（最終輸出）
-
-# 最終保留: paper.md（原始）、paper_trans.pdf（輸出）
-# 最終刪除: paper_trans.md（中間文件）
-```
-
-#### 範例 C：PDF → MD 轉換（使用 -m）
-
-```bash
-# 輸入: thesis.pdf
-md-translate thesis.pdf -m
-
-# 生成流程:
-# 1. thesis.pdf → thesis.md（中間文件）
-# 2. thesis.md → thesis_trans.md（翻譯）
-
-# 最終保留: thesis.pdf（原始）、thesis_trans.md（輸出）
-# 最終刪除: thesis.md（中間未翻譯文件）
-```
-
-## 自定義 CSS 樣式
-
-### 使用自定義 CSS
-
-```bash
-md-translate file.pdf --css my_style.css
-```
-
-或
-
-```bash
-md-translate file.md --style my_style.css
-```
-
-### CSS 特性
-
-- ✅ **自動顏色檢測**：自動從 CSS 中提取背景顏色
-- ✅ **列印最佳化**：自動添加打印樣式確保 PDF 效果
-- ✅ **CSS 變量支持**：支持 `--bg-color` 等 CSS 變量
-- ✅ **無修改原文件**：自定義 CSS 文件不會被修改
-
-### 以 default.css 為參考範本
-
-套件內建的 [`default.css`](https://github.com/Bruce762/markdown_translator/blob/main/md_translator/default.css) 是一個完整的 CSS 範例，包含字體、顏色、版面、圖片大小等所有設定，可以直接複製後修改：
-
-```bash
-cp default.css my_style.css
-# 修改 my_style.css ...
-md-translate file.md --css my_style.css
-```
-
-### CSS 文件示例
-
-```css
-:root {
-  --bg-color: #f3f2ee;
-  --text-color: #333;
-  --font-family: "Microsoft YaHei", "SimHei", sans-serif;
-}
-
-body {
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  font-family: var(--font-family);
-  line-height: 1.6;
-}
-
-h1,
-h2,
-h3 {
-  color: #2c3e50;
-  margin-top: 24px;
-  margin-bottom: 12px;
-}
-
-code {
-  background-color: #f5f5f5;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-```
+- **輸出檔名**統一加 `_trans` 後綴：`paper.pdf` → `paper_trans.pdf`
+- **原始檔案永遠保留**，翻譯結果是新檔案
+- 最終輸出 PDF 時，中間的 `.md` 與圖片資料夾會自動清掉；用 `-m` 時則保留 `.md`
+
+### 不同輸入 × 參數的輸出對照
+
+| 命令 | 流程 | 輸出 |
+| --- | --- | --- |
+| `md-translate file.pdf` | PDF→MD→翻譯→PDF | `file_trans.pdf` |
+| `md-translate file.pdf -m` | PDF→MD→翻譯 | `file_trans.md` |
+| `md-translate file.pdf --no-translate` | PDF→MD→PDF | `file_trans.pdf` |
+| `md-translate file.pdf -m --no-translate` | PDF→MD | `file_trans.md` |
+| `md-translate file.md` | 翻譯→PDF | `file_trans.pdf` |
+| `md-translate file.md -m` | 翻譯 | `file_trans.md` |
+| `md-translate file.md --no-translate` | →PDF | `file_trans.pdf` |
+
+---
 
 ## 翻譯特性
 
-### LaTeX 公式保護
+- 🧮 **保留 LaTeX 公式**：`$...$` / `$$...$$` 內容原封不動，不翻譯
+- 💻 **保留程式碼與表格**：程式碼塊（```）、Markdown／HTML 表格不翻譯
+- 🔖 **資工術語**：常見術語會保留原文或標註原文
+- 🔢 **移除標題編號**：自動去掉原文標題的 `1.1`、`2.3.1` 等編號
+- 📑 **雙語對照**：內文輸出「原文 + 譯文」對照（標題則同行並排）
 
-所有 LaTeX 數學公式都會被自動保護，不進行翻譯。例如：
+範例——公式在翻譯後位置不變：
 
-**原文：**
+> 原文：The mutant vector `$V_{i,G+1}$` is calculated using `$V_{i,G+1} = X_{r1,G} + F \cdot (X_{r2,G} - X_{r3,G})$`.
+>
+> 譯文：變異向量 `$V_{i,G+1}$` 是使用公式 `$V_{i,G+1} = X_{r1,G} + F \cdot (X_{r2,G} - X_{r3,G})$` 計算得出的。
 
+---
+
+## PDF 樣式（CSS）
+
+輸出 PDF 時有四種樣式可選，**擇一使用**：
+
+```bash
+md-translate paper.md                 # 預設主題（PT Serif 襯線、米色背景）
+md-translate paper.md --no-css        # 內建 GitHub 主題（Open Sans、白底）
+md-translate paper.md --black-css     # 內建 night 暗色主題（深色背景）
+md-translate paper.md --css mine.css  # 你自己的 CSS
 ```
-The mutant vector $V_{i,G+1}$ is calculated using the formula $V_{i,G+1} = X_{r1,G} + F \cdot (X_{r2,G} - X_{r3,G})$.
+
+### `--no-css`：內建 GitHub 主題
+
+不用自己寫 CSS 就能套用乾淨現代的版面：
+
+- 🅰️ Open Sans 字體 + 白色背景，貼近 GitHub 的 Markdown 預覽
+- 📦 字體已內建，免另外安裝
+- 🈶 完整中文支援（含程式碼區塊內的中文）
+- 🧱 程式碼區塊是單一連續方框，不會斷裂
+
+### `--black-css`：內建 night 暗色主題
+
+深色背景版面，適合在螢幕上閱讀：
+
+- 🌙 深灰背景（`#363B40`）+ 淺色文字，長時間閱讀較不刺眼
+- 🈶 完整中文支援（含程式碼區塊內的中文）
+- 🎨 程式碼採暗色語法高亮，在深色底上清晰易讀
+
+> 此主題以 Typora 的 night 主題為基礎，並針對 PDF 輸出補上中文字體與程式碼區塊樣式。
+
+### `--css`：自訂樣式
+
+最簡單的做法是複製內建的 [`default.css`](https://github.com/Bruce762/markdown_translator/blob/main/md_translator/default.css) 改：
+
+```bash
+cp default.css my_style.css
+# 編輯 my_style.css …
+md-translate paper.md --css my_style.css
 ```
 
-**翻譯結果：**
+系統會自動偵測背景色、加上列印最佳化，且**不會修改你的原始 CSS 檔**。支援 `--bg-color` 等 CSS 變數。
 
+> ℹ️ **中文字體**：靠系統內建的 CJK 字體顯示（macOS／Windows 開箱即用）。極簡 Linux 環境若缺中文字體，請自行安裝，例如 `apt install fonts-noto-cjk`。
+
+---
+
+## CPU 模式與後端差異（`--cpu`）
+
+很多人以為 `--cpu` 只是「把 GPU 的工作改用 CPU 做、單純變慢」，其實**它會切換成另一套完全不同的解析引擎**，辨識能力也跟著不同：
+
+| | 不加 `--cpu`（預設 VLM 後端） | 加 `--cpu`（pipeline 後端） |
+| --- | --- | --- |
+| **核心模型** | 視覺語言模型 MinerU2.5（VLM） | 傳統 CV 流水線：版面偵測 + PaddleOCR + 公式／表格模型 |
+| **工作方式** | 像「看懂整頁」一樣直接輸出結構化 markdown | 分模組：先框版面 → 再分別 OCR |
+| **程式碼辨識** | 完整（行內、程式碼塊） | 弱，圖片式偽代碼常抓不到 |
+| **算力需求** | 需要 GPU（M 系列 Mac 用 Apple GPU 跑） | 輕量，CPU 也能跑 |
+
+> 💡 **結論**：追求辨識品質就**不要加 `--cpu`**，走預設 VLM 後端；`--cpu` 只當作記憶體不足、預設模式跑不動時的輕量備援，代價是辨識明顯變弱。
+>
+> 🍎 **Mac 用戶**：M 系列 Mac 不加 `--cpu` 時會用 Apple GPU 跑精度更高的 VLM 後端，建議優先不要加 `--cpu`。
+
+---
+
+## OCR 語言（`--ocr-lang`）
+
+`--ocr-lang` 決定 mineru 用哪種語言模型辨識**原文 PDF**，預設 `en`（適合英文論文）。翻譯非英文論文時要改的是這個參數，不是 `--lang`：
+
+```bash
+md-translate english_paper.pdf                          # 英文論文（預設 en）
+md-translate 中文論文.pdf --ocr-lang ch_lite             # 中文論文
+md-translate 中文論文.pdf --ocr-lang ch_lite --lang 英文  # 中文原文 → 翻成英文
 ```
-變異向量 $V_{i,G+1}$ 是使用公式 $V_{i,G+1} = X_{r1,G} + F \cdot (X_{r2,G} - X_{r3,G})$ 計算得出的。
-```
 
-### 資工術語保留
+常用代碼（完整清單見 `mineru --help`）：
 
-常見的資工術語會根據上下文保留原文或進行適當的標註。
+| 代碼 | 語言 | 備註 |
+| --- | --- | --- |
+| `en` | 英文 | **預設值**，最適合英文論文 |
+| `ch_lite` | 簡體中文（輕量） | ✅ **中文首選**：字典匹配、不會崩 |
+| `ch_server` | 簡體中文（伺服器版） | 比 lite 更準；加 `--cpu` 時會被降級成 `ch_lite` |
+| `chinese_cht` | 繁體中文 | 加 `--cpu` 時會被降級成 `ch_lite` |
+| `japan` | 日文 | 加 `--cpu` 時會被降級成 `ch_lite` |
+| `korean` | 韓文 | |
+| `latin` | 拉丁字母系（英／法／德／西等） | |
+| `arabic` / `cyrillic` / `devanagari` / `th` … | 阿拉伯／西里爾／天城文／泰文等 | |
+| `ch` | 簡體中文 | ⚠️ **不建議**：舊字典不匹配，含表格時會崩潰 |
 
-### 標題編號移除
+---
 
-自動移除原文標題中的編號（如 1.1, 1.2, 2.3.1）。
+## 設定檔
 
-## 配置文件格式
-
-配置文件位置：`~/.config/markdown-translator/config.json`
+位置：`~/.config/markdown-translator/config.json`（用 `md-translate --config` 查看）
 
 ```json
 {
-  "api_provider": "gemini",
-  "gemini_api_key": "your_gemini_api_key_here",
-  "openai_api_key": "",
+  "api_provider": "openai",
+  "openai_api_key": "your_key_here",
+  "gemini_api_key": "",
   "target_language": "繁體中文"
 }
 ```
 
-**注意**：API Key 會安全存儲在個人配置目錄中，權限設定為 600（僅所有者可讀寫）。
+> API Key 以 600 權限（僅所有者可讀寫）安全存放在個人設定目錄。
 
-## 支持的文件格式
-
-- **Markdown**：`.md` - 直接翻譯
-- **PDF**：`.pdf` - 使用 MineRU 轉換後翻譯
+---
 
 ## 故障排除
 
-### 問題：找不到文件
+<details>
+<summary><b>找不到 Chrome（<code>chrome not found</code> / <code>Chromium executable not found</code>）</b></summary>
 
-確保文件路徑正確且文件存在：
-
-```bash
-md-translate ./path/to/your/file.md
-```
-
-### 問題：API Key 無效
-
-重新進行配置設置：
-
-```bash
-md-translate --setup
-```
-
-檢查您的 API Key 是否正確有效。
-
-### 問題：翻譯速度慢
-
-這是正常的，因為需要調用 LLM API。翻譯速度取決於：
-
-- 文件大小
-- API 網絡連接速度
-- LLM 处理能力
-
-系統已使用多執行緒加速，請耐心等待。
-
-### 問題：Chrome 未找到
-
-**錯誤信息**：`chrome not found` 或 `Chromium executable not found`
-
-**解決方案**：
-
-1. **檢查 Chrome 是否安裝**
-
-   ```bash
-   which google-chrome          # Linux/macOS
-   # 或
-   where chrome                 # Windows
-   ```
-
-2. **如果未安裝，根據您的系統安裝**
-
-   **macOS**：
-
-   ```bash
-   brew install --cask google-chrome
-   ```
-
-   **Linux (Ubuntu/Debian)**：
-
-   ```bash
-   sudo apt-get install google-chrome-stable
-   # 或 Chromium
-   sudo apt-get install chromium-browser
-   ```
-
-   **Windows**：安裝 [Google Chrome](https://www.google.com/chrome/)
-
-3. **如果 Chrome 已安裝但仍未找到**，設置環境變數：
-
+1. 確認已安裝：`which google-chrome`（macOS／Linux）或 `where chrome`（Windows）
+2. 沒裝就依〈安裝〉一節裝 Chrome
+3. 已裝但仍找不到，指定路徑：
    ```bash
    export PUPPETEER_EXECUTABLE_PATH=/path/to/chrome
    md-translate file.pdf
    ```
+</details>
 
-### 問題：Chrome 沙箱錯誤
+<details>
+<summary><b>Chrome 沙箱錯誤（<code>Failed to move temp folder</code>）</b></summary>
 
-**錯誤信息**：`Failed to move temp folder` 或沙箱相關錯誤
-
-**解決方案**：
-
-在命令前添加環境變數禁用沙箱（僅在沙箱有問題時使用）：
-
+在命令前停用沙箱（僅在出問題時用）：
 ```bash
 export PYPPETEER_CHROMIUM_REVISION=1054519
 md-translate file.pdf
 ```
+</details>
 
-或編輯 `config.json`（通常在 `~/.md-translate/config.json`），添加：
+<details>
+<summary><b>Chrome 崩潰或超時</b></summary>
 
-```json
-{
-  "chrome_args": ["--no-sandbox", "--disable-setuid-sandbox"]
-}
-```
+- 大檔案很吃資源，確認記憶體與 `/tmp` 空間足夠（`df -h /tmp`）
+- 超過 100 頁的文件可先切成小檔
+- 試著升級 Chrome：`brew upgrade google-chrome`
+</details>
 
-### 問題：Chrome 崩潰或超時
+<details>
+<summary><b>API Key 無效</b></summary>
 
-**錯誤信息**：`Timeout` 或 `Process crashed`
+重新設定並確認 Key 正確：`md-translate --setup`
+</details>
 
-**解決方案**：
+<details>
+<summary><b>API 配額超限（429）</b></summary>
 
-1. **檢查系統資源**（特別是大文件轉換）
+工具會在配額不足時自動停止並顯示已翻譯進度。可：等配額重置、升級方案、或 `--setup` 切換到另一個提供商。
+</details>
 
-   ```bash
-   # macOS
-   top -o rsize      # 查看記憶體使用
-   ```
+<details>
+<summary><b><code>--css</code> 樣式沒套用</b></summary>
 
-2. **嘗試以下方法**：
-   - **重新啟動工具**：
-     ```bash
-     md-translate file.pdf
-     ```
-   - **分割大文件**：如果文件超過 100 頁，嘗試分割成多個小文件
-   - **檢查磁盤空間**：確保 `/tmp` 文件夾有足夠空間
-     ```bash
-     df -h /tmp       # macOS/Linux
-     ```
+- 確認 CSS 路徑正確（相對或絕對路徑皆可）
+- 確認 CSS 語法正確、背景色用 `--bg-color` 變數或 `body { background: ... }`
+</details>
 
-3. **如果持續出現，嘗試升級 Chrome**：
+<details>
+<summary><b>翻譯很慢</b></summary>
 
-   ```bash
-   # macOS
-   brew upgrade google-chrome
-   ```
+正常現象，速度取決於檔案大小、網路、與 LLM。OpenAI 用 5 線程並發，Gemini 用 1 線程，請耐心等待。
+</details>
 
-### 問題：PDF 生成的 CSS 樣式未應用
+---
 
-**症狀**：使用 `--css` 參數但 PDF 中沒有樣式
+## 常見問題
 
-**解決方案**：
+**Q：兩個命令 `md-translate` 和 `pdf-md-translate` 有差別嗎？**
+完全一樣，任選一個用。
 
-1. **檢查 CSS 文件路徑**
+**Q：`-m` 和 `--no-translate` 差在哪？**
+`-m` = 只輸出 Markdown 不轉 PDF；`--no-translate` = 跳過翻譯只轉檔。兩者可一起用。
 
-   ```bash
-   md-translate file.md --css ./styles/custom.css   # 使用相對路徑
-   md-translate file.md --css /full/path/custom.css # 或絕對路徑
-   ```
+**Q：原始檔案會被覆蓋嗎？**
+不會。輸出一律加 `_trans` 後綴，原始 PDF／MD 永遠保留。
 
-2. **檢查 CSS 語法**
+**Q：可以一次翻譯多個檔案嗎？**
+目前不行，請逐一執行。
 
-   確保 CSS 格式正確，例如：
+**Q：Mac 需要加 `--cpu` 嗎？**
+建議不要。M 系列 Mac 預設用 Apple GPU 跑更準的 VLM 後端，只有跑不動時才拿 `--cpu` 當備援（見〈CPU 模式與後端差異〉）。
 
-   ```css
-   body {
-     font-family: Arial, sans-serif;
-     background-color: #f5f5f5;
-   }
+**Q：要先裝 Pandoc 嗎？**
+不用。`pypandoc` 會在第一次使用時自動下載（約 50–100 MB，一次性）。
 
-   @media print {
-     body {
-       margin: 0;
-     }
-   }
-   ```
+**Q：支援哪些翻譯語言？**
+由 LLM 決定，繁中／簡中／英／日／韓／法／西／德等常見語言都支援，其他語言也可以試。
 
-3. **檢查 CSS 變量**
+---
 
-   系統支持自定義背景顏色變量：
+## 相依套件
 
-   ```css
-   :root {
-     --bg-color: #ffffff;
-   }
+| 套件 | 用途 |
+| --- | --- |
+| `openai` / `google-genai` | 呼叫 LLM 翻譯 API |
+| `mineru[all]` | PDF → Markdown |
+| `pypandoc` | Markdown → HTML/PDF（自動下載 Pandoc） |
+| `tqdm` | 進度條 |
 
-   body {
-     background: var(--bg-color);
-   }
-   ```
-
-## 常見問題（FAQ）
-
-### Q: `-m` 參數是什麼意思？
-
-A: `-m` 表示「只輸出 Markdown 文件，不轉換為 PDF」。
-
-- 不加 `-m`：會生成 Markdown + PDF 文件
-- 加 `-m`：只生成 Markdown 文件
-
-```bash
-md-translate paper.pdf         # 輸出：paper_trans.md + paper_trans.pdf
-md-translate paper.pdf -m      # 輸出：只有 paper_trans.md
-```
-
-### Q: `--no-translate` 參數的用途？
-
-A: 跳過翻譯步驟，只進行格式轉換。
-
-```bash
-md-translate paper.pdf --no-translate        # PDF → PDF（不翻譯）
-md-translate paper.md --no-translate         # MD → PDF（不翻譯）
-md-translate paper.pdf -m --no-translate     # PDF → MD（不翻譯）
-```
-
-### Q: 參數可以組合嗎？順序重要嗎？
-
-A: 是的，參數可以自由組合，**順序完全不重要**。以下命令結果一樣：
-
-```bash
-md-translate file.pdf -m --lang 簡體中文 --css custom.css
-md-translate file.pdf --css custom.css -m --lang 簡體中文
-md-translate file.pdf --lang 簡體中文 --css custom.css -m
-```
-
-### Q: 自定義 CSS 有什麼用途？
-
-A: 自定義 CSS 可以控制 PDF 的樣式（顏色、字體、佈局等）。
-
-```bash
-md-translate file.md --css dark-theme.css    # 使用深色主題
-md-translate file.md --css light-theme.css   # 使用淺色主題
-```
-
-系統會自動：
-
-- 檢測 CSS 中的背景顏色
-- 為打印優化樣式
-- 不修改原始 CSS 文件
-
-可以直接參考套件內建的 [`default.css`](https://github.com/Bruce762/markdown_translator/blob/main/md_translator/default.css) 作為起點，複製後修改成自己想要的樣式。
-
-### Q: 為什麼所有輸出文件都要加 `_trans` 後綴？
-
-A: 使用 `_trans` 後綴有以下優點：
-
-1. **避免覆蓋原文件**：即使文件名相同，翻譯後的文件也不會覆蓋原始文件
-2. **清晰識別**：一眼就能看出哪個文件是翻譯後的版本
-3. **版本管理**：同時保留原文和譯文便於對比和版本管理
-4. **自動化處理**：腳本可以自動識別哪些文件已翻譯
-
-範例：
-
-```
-原始文件: thesis.pdf ✓ 保留
-翻譯输出: thesis_trans.pdf ✓ 新文件（不會覆蓋原文件）
-
-原始文件: paper.md ✓ 保留
-翻譯输出: paper_trans.md ✓ 新文件（不會覆蓋原文件）
-```
-
-### Q: 為什麼有些文件生成了中間 MD 文件又刪除了？
-
-A: 這是正常行為。系統的邏輯是：
-
-**當輸出為 PDF 時**，中間生成的 MD 文件（包括翻譯後的 `_trans.md`）會被自動刪除，只保留最終的 PDF 和原始輸入文件。
-
-**當輸出為 MD 時**，中間轉換的文件不會被刪除（如果有的話）。
-
-詳細說明請參考上面的 **[文件輸出說明](#文件輸出說明)** 部分。
-
-### Q: 所有輸入文件都會被保留嗎？
-
-A: 是的！**所有原始輸入文件（PDF 或 MD）都會被保留**。
-
-系統只會刪除過程中的臨時文件（如 HTML）。
-
-### Q: Mac 用戶需要使用 `--cpu` 嗎？
-
-A: **建議加上**。macOS 通常沒有 NVIDIA GPU，mineru 在預設模式下可能因 GPU 驅動不相容而失敗或效能異常。加上 `--cpu` 可強制使用 CPU 模式，穩定性更高：
-
-```bash
-md-translate file.pdf --cpu
-md-translate file.pdf --cpu --lang 繁體中文
-md-translate file.pdf --cpu -m --no-translate
-```
-
-### Q: 可以同時翻譯多個文件嗎？
-
-A: 暫時不支持一次翻譯多個文件。請逐個翻譯：
-
-```bash
-md-translate paper1.pdf
-md-translate paper2.pdf
-md-translate paper3.md
-```
-
-### Q: 別人電腦沒裝 Pandoc 怎麼辦？
-
-A: 不用擔心。`pypandoc` 會自動處理：
-
-- 首次運行時自動下載 Pandoc（約 50-100 MB）
-- 之後可以離線使用
-- 完全自動，用戶無需介入
-
-### Q: 支持哪些語言翻譯？
-
-A: 由 LLM 決定。常見支持的語言包括：
-
-- 繁體中文
-- 簡體中文
-- English
-- 日本語
-- 한국어
-- Français
-- Español
-- Deutsch
-- 等等
-
-可以嘗試其他語言，LLM 通常會支持。
-
-### Q: 翻譯質量如何？
-
-A: 質量取決於選擇的 LLM。本工具支持的模型：
-
-**Google Gemini**：
-
-- 模型：`gemini-2.5-flash`
-- 優點：免費額度充足，速度快，質量不錯
-- 適合：快速翻譯、測試、免費用戶
-
-**OpenAI** (默認)：
-
-- 模型：`gpt-5.4-mini`
-- 優點：翻譯質量最高，術語準確度最好
-- 適合：論文翻譯、專業文檔、要求高質量的場景
-
-公式、代碼、表格會被保護並正確處理。
-
-> 📝 **注意**：模型版本會不定期更新。執行 `md-translate --setup` 可查看當前使用的模型。
-
-| 套件           | 用途                     | 自動處理 |
-| -------------- | ------------------------ | -------- |
-| `openai`       | OpenAI GPT API 調用      | -        |
-| `google-genai` | Google Gemini API 調用   | -        |
-| `tqdm`         | 進度條顯示               | -        |
-| `mineru`       | PDF 轉換為 Markdown      | -        |
-| `pypandoc`     | Markdown 轉換為 HTML/PDF | ✅ 自動  |
-
-### 關於 Pandoc
-
-- `pypandoc` 會自動下載並管理 Pandoc 二進制文件
-- 首次使用時會自動下載（約 50-100 MB，一次性）
-- 無需手動安裝 Pandoc
-- 支持所有平台：Windows、macOS、Linux
-
-## 系統需求
-
-### 必需
-
-- Python >= 3.8
-- 有效的 OpenAI API Key 或 Google Gemini API Key
-
-### 可選
-
-- 無（所有系統依賴由包自動處理）
+授權：GNU AGPL v3

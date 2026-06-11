@@ -538,6 +538,7 @@ def print_usage():
     print("  md-translate file.md --css style.css         # 使用自定義 CSS")
     print("  md-translate file.pdf --css custom.css -m   # PDF → MD + 自定義樣式")
     print("  md-translate file.md --no-css                # 使用內建 GitHub 主題（Open Sans）")
+    print("  md-translate file.md --black-css             # 使用內建 night 暗色主題（深色背景）")
     print()
     print(f"{Colors.GREEN}組合用法：{Colors.NC}")
     print("  md-translate file.pdf -m --no-translate # PDF → MD，無翻譯")
@@ -556,6 +557,7 @@ def print_usage():
     print("  --lang [LANGUAGE]   指定目標翻譯語言")
     print("  --css [FILE]        指定自定義 CSS 文件（用於 PDF 轉換的樣式）")
     print("  --no-css            使用內建 GitHub 主題 CSS（GitHub 風格、Open Sans 字體）")
+    print("  --black-css         使用內建 night 暗色主題 CSS（深色背景、適合螢幕閱讀）")
     print("  --cpu               使用 CPU 模式執行 mineru（加上 -b pipeline 參數）")
     print()
     print(f"{Colors.YELLOW}功能矩陣：{Colors.NC}")
@@ -641,6 +643,10 @@ def parse_command_flags(args):
             # 使用內建 github 主題 CSS（Open Sans 字體，GitHub 風格）
             pkg_dir = os.path.dirname(__file__)
             css_file = os.path.join(pkg_dir, "github.css")
+        elif arg == "--black-css":
+            # 使用內建 night 暗色主題 CSS（深色背景）
+            pkg_dir = os.path.dirname(__file__)
+            css_file = os.path.join(pkg_dir, "night.css")
         elif arg == "--ocr-lang":
             # mineru OCR 語言（傳給 -l）。例如 ch / en / japan ...
             if i + 1 < len(args) and not args[i + 1].startswith("-"):

@@ -1,5 +1,5 @@
 include README.md
 include LICENSE
-recursive-include md_translator *.css *.json
+recursive-include md_translator *.css *.json *.woff2
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
