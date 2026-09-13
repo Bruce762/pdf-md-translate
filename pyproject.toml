@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-md-translate"
-version = "1.0.1"
+version = "1.0.4"
 description = "文檔轉換和翻譯工具：PDF ↔ Markdown 轉換、LLM 翻譯、自定義樣式 PDF 生成"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
@@ -27,6 +27,11 @@ dependencies = [
     "google-genai==1.73.0",
     "tqdm==4.67.3",
     "mineru[all]==3.0.9",
+    # MinerU 3.0.9 still uses the PDFium 4.x get_pos API.
+    "pypdfium2==4.30.0",
+    "pdftext==0.6.3",
+    # MLX >=0.31.2 breaks the threaded inference used by mlx-vlm 0.3.x.
+    "mlx==0.31.1; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "pypandoc==1.17"
 ]
 

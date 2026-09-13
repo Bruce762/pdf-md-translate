@@ -16,7 +16,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 導入配置管理模塊
-from .config import config_manager
+from .config import config_manager, DEFAULT_MODELS
 
 def get_mineru_version():
     """獲取已安裝的 mineru 版本，取不到時返回 None"""
@@ -43,6 +43,9 @@ def import_pdf_converter():
 def init_api_config():
     """初始化 API 配置"""
     global API_PROVIDER, OPENAI_API_KEY, GOOGLE_API_KEY, openai_client, gemini_client
+    global OPENAI_MODEL, GEMINI_MODEL
+    OPENAI_MODEL = config_manager.get_model("openai")
+    GEMINI_MODEL = config_manager.get_model("gemini")
     
     API_PROVIDER = config_manager.get_api_provider()
     
@@ -66,8 +69,8 @@ openai_client = None
 gemini_client = None
 
 # 模型配置
-OPENAI_MODEL = "gpt-5.4-mini"
-GEMINI_MODEL = "gemini-3.1-flash-lite"
+OPENAI_MODEL = DEFAULT_MODELS["openai"]
+GEMINI_MODEL = DEFAULT_MODELS["gemini"]
 # 顏色定義
 class Colors:
     RED = '\033[0;31m'
@@ -134,13 +137,15 @@ def _call_openai_api(prompt, system_prompt):
         return None
     
     try:
+        effort = config_manager.get_reasoning_effort(OPENAI_MODEL)
+        reasoning_args = {} if effort == "default" else {"reasoning_effort": effort}
         response = openai_client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3
+            **reasoning_args
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
@@ -694,6 +699,8 @@ def main():
         model_display = f"🤖 OpenAI ({model_name})"
     
     print(f"使用的模型：{model_display}\n")
+    if current_provider == "openai":
+        print(f"推理程度：{config_manager.get_reasoning_effort(OPENAI_MODEL)}\n")
     
     # 獲取文件路徑
     input_file = sys.argv[1]
@@ -779,7 +786,9 @@ def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_transl
         else:
             print(f" 3 步", end="")
         print(f"：開始轉換為 PDF...{Colors.NC}")
-        _convert_translated_to_pdf(md_file, css_file)
+        if not _convert_translated_to_pdf(md_file, css_file):
+            print(f"{Colors.RED}❌ PDF 輸出失敗；已保留 Markdown 與圖片，可稍後重試。{Colors.NC}")
+            raise SystemExit(1)
         
         # 轉換完成後，刪除所有中間的 MD 文件（只保留最終的 PDF）
         # 刪除 _trans.md 文件
@@ -871,7 +880,9 @@ def _handle_md_file(md_file, target_language, only_markdown=False, skip_translat
         else:
             print(f" 2 步", end="")
         print(f"：開始轉換為 PDF...{Colors.NC}")
-        _convert_translated_to_pdf(final_md_file, css_file)
+        if not _convert_translated_to_pdf(final_md_file, css_file):
+            print(f"{Colors.RED}❌ PDF 輸出失敗；已保留 Markdown 與圖片，可稍後重試。{Colors.NC}")
+            raise SystemExit(1)
         
         # 轉換完成後，刪除所有中間的 _trans.md 文件（只保留最終 PDF，原始 MD 保留）
         if final_md_file != md_file and os.path.exists(final_md_file):
@@ -950,7 +961,8 @@ def _handle_markdown_translation(md_file, target_language="繁體中文"):
     
     # 如果設置了 -p，轉換成 PDF
     if convert_to_pdf:
-        _convert_translated_to_pdf(final_md_file)
+        if not _convert_translated_to_pdf(final_md_file):
+            raise SystemExit(1)
 
 def print_translate_file_usage():
     """打印 MD 翻譯用法"""

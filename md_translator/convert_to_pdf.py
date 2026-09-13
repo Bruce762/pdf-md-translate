@@ -17,7 +17,10 @@ import os
 import sys
 import platform
 import re
+import tempfile
+import time
 from pathlib import Path
+from contextlib import closing
 
 
 # ============================================================================
@@ -202,6 +205,9 @@ def convert_markdown_to_html(input_file, output_file, css_file=None):
         pypandoc = import_pypandoc()
         if pypandoc is None:
             return False
+        # Install the executable into this Python environment when missing.
+        pandoc_dir = os.path.join(sys.prefix, "Scripts" if os.name == "nt" else "bin")
+        pypandoc.ensure_pandoc_installed(targetfolder=pandoc_dir, delete_installer=True)
         
         # Convert markdown to HTML
         extra_args = [
@@ -271,6 +277,58 @@ def get_chrome_path():
     return None
 
 
+def _pdf_is_complete(path):
+    """Require a finished PDF trailer and readable pages before stopping Chrome."""
+    try:
+        with open(path, "rb") as source:
+            source.seek(max(0, os.fstat(source.fileno()).st_size - 1024))
+            if not source.read().rstrip().endswith(b"%%EOF"):
+                return False
+        import pypdfium2
+        with closing(pypdfium2.PdfDocument(path)) as document:
+            return len(document) > 0
+    except (OSError, ValueError, RuntimeError):
+        return False
+
+
+def _print_with_chrome(cmd, generated_pdf):
+    # A file avoids filling stderr pipes while Chrome keeps running after print.
+    with tempfile.TemporaryFile(mode="w+b") as log:
+        process = subprocess.Popen(cmd, stdout=log, stderr=log)
+        try:
+            deadline = time.monotonic() + 120
+            previous = None
+            stable_since = time.monotonic()
+            while time.monotonic() < deadline:
+                now = time.monotonic()
+                try:
+                    stat = os.stat(generated_pdf)
+                    current = (stat.st_size, stat.st_mtime_ns)
+                except FileNotFoundError:
+                    current = None
+                if current != previous:
+                    previous, stable_since = current, now
+                if current and now - stable_since >= 1 and _pdf_is_complete(generated_pdf):
+                    return True
+                if process.poll() is not None:
+                    if process.returncode == 0 and _pdf_is_complete(generated_pdf):
+                        return True
+                    log.seek(0)
+                    print(log.read().decode("utf-8", errors="replace"), file=sys.stderr)
+                    return False
+                time.sleep(0.25)
+            print("✗ Chrome did not produce a complete PDF within 120 seconds", file=sys.stderr)
+            return False
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+
+
 def convert_html_to_pdf(input_html, output_pdf):
     """
     Convert HTML to PDF using Chrome headless mode.
@@ -309,6 +367,9 @@ def convert_html_to_pdf(input_html, output_pdf):
             chrome_path,
             "--headless",
             "--disable-gpu",
+            "--disable-extensions",
+            "--no-first-run",
+            "--no-default-browser-check",
             "--no-pdf-header-footer",
             "--virtual-time-budget=10000",
             "--run-all-compositor-stages-before-draw",
@@ -316,7 +377,16 @@ def convert_html_to_pdf(input_html, output_pdf):
             html_absolute
         ]
         
-        subprocess.run(cmd, capture_output=True, text=True, check=True)
+        with tempfile.TemporaryDirectory(prefix="md-pdf-", dir=os.path.dirname(pdf_absolute)) as folder:
+            generated_pdf = os.path.join(folder, "output.pdf")
+            cmd[-2] = f"--print-to-pdf={generated_pdf}"
+            cmd.insert(1, f"--user-data-dir={os.path.join(folder, 'chrome')}")
+            if not _print_with_chrome(cmd, generated_pdf):
+                return False
+            if not os.path.isfile(generated_pdf) or os.path.getsize(generated_pdf) == 0:
+                print("✗ Chrome did not produce a PDF", file=sys.stderr)
+                return False
+            os.replace(generated_pdf, pdf_absolute)
         print(f"✓ PDF generated: {output_pdf}")
         return True
         
