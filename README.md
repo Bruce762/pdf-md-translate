@@ -105,6 +105,18 @@ md-translate paper.pdf -m              # 輸出 paper_trans.md（不生成 PDF�
 md-translate paper.pdf --no-translate  # PDF → PDF，跳過翻譯
 ```
 
+### 只將 Markdown 轉成 PDF
+
+```bash
+md-translate "paper.md" --no-translate  # 輸出 paper_trans.pdf
+```
+
+直接執行 **Markdown → HTML → PDF**，不啟用 MinerU，也不呼叫翻譯 API。預設套用內建的 `default.css`，也可以用 `--css` 指定其他樣式。
+
+需要 Chrome 與 Pandoc（Pandoc 若未安裝，程式會嘗試自動下載）。不要加 `-m`，因為它代表只輸出 Markdown，不生成 PDF。
+
+目前命令啟動時仍會檢查 API 設定，因此首次使用可能出現設定提示；轉檔本身不會呼叫翻譯 API。
+
 就這些。下面是進階選項與細節，需要時再看。
 
 ---
@@ -388,6 +400,14 @@ md-translate paper_trans.md --no-translate
 由 LLM 決定，繁中／簡中／英／日／韓／法／西／德等常見語言都支援，其他語言也可以試。
 
 ---
+
+## 1.0.6 更新
+
+- 調整預設 PDF 的左右邊距、內文字級、標題大小與段落間距，所有頁面使用相同的左右邊距。
+- 為二級標題加入底線，並讓標題字級獨立於內文字級。
+- 限制表格寬度，讓表格與程式碼中的長內容換行，減少超出頁面的情況。
+- 量測 MathJax 公式寬度，僅縮小超寬公式，並限制隱藏 MathML 對版面的影響，避免整份 PDF 被連帶縮小。
+- 補上使用 `--no-translate` 將 Markdown 直接轉成 PDF 的說明。
 
 ## 1.0.5 更新
 

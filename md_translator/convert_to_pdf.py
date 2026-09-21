@@ -225,6 +225,27 @@ def convert_markdown_to_html(input_file, output_file, css_file=None):
             format='markdown+hard_line_breaks',
             extra_args=extra_args
         )
+
+        # Measure MathJax after typesetting. The print stylesheet uses these
+        # font-relative widths to fit long formulas to the page independently.
+        # Container units recalculate for the actual print area, unlike a
+        # beforeprint handler measuring the screen viewport.
+        math_width_script = """<script>
+window.addEventListener('load', async () => {
+    if (!window.MathJax || !MathJax.startup) return;
+    await MathJax.startup.promise;
+    await document.fonts.ready;
+    for (const math of document.querySelectorAll('mjx-container > mjx-math')) {
+        const width = Math.max(math.scrollWidth, math.getBoundingClientRect().width);
+        const fontSize = parseFloat(getComputedStyle(math).fontSize);
+        if (width > 0 && fontSize > 0) {
+            math.style.setProperty('--math-natural-width', `${width / fontSize}em`);
+        }
+    }
+});
+</script>
+"""
+        html_content = html_content.replace('</body>', math_width_script + '</body>')
         
         # Write to file
         with open(output_file, 'w', encoding='utf-8') as f:

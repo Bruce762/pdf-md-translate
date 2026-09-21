@@ -136,3 +136,5 @@ dmypy.json
 *.md~
 temporary_*
 test_output/
+images/
+test-file/

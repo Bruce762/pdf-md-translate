@@ -1,7 +1,60 @@
 
 @page {
-    margin: 15mm;
+    margin: 15mm  78pt;
     background-color: #f3f2ee !important;
+}
+
+@media print {
+    html body {
+        margin-left: 0;
+        margin-right: 0;
+        font-size: 14pt;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+        container-type: inline-size;
+    }
+
+    /* Wide tables must fit the printable area instead of shrinking all pages. */
+    body table {
+        width: 100%;
+        table-layout: fixed;
+        font-size: min(1em, 10pt);
+        line-height: 1.5;
+    }
+
+    body th, body td {
+        min-width: 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    body pre, body pre code {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    /* Fit only oversized formulas to the print container, never the whole page.
+       The converter records each formula's natural width in font-relative units. */
+    body mjx-container {
+        min-width: 0 !important;
+        max-width: 100%;
+    }
+
+    body mjx-container > mjx-math {
+        zoom: min(1, calc((100cqw - 1px) / var(--math-natural-width, 1px)));
+    }
+
+    /* Hidden accessibility MathML must not enlarge the printable document. */
+    body mjx-assistive-mml {
+        contain: strict;
+    }
+
+    /* Keep heading sizes independent of the smaller body text. */
+    body h1 { font-size: 1.5rem; }
+    body h2 { font-size: 1.4rem; }
+    body h3 { font-size: 1.25rem; }
+    body h4 { font-size: 1.125rem; }
+    body h5, body h6 { font-size: 1rem; }
 }
 
 html, body {
@@ -147,8 +200,7 @@ h6 {
 	font-weight: bold;
 }
 h1 {
-	font-size: 1.875em;
-	/*30 / 16*/
+	font-size: 1.5em;
 	line-height: 1.6em;
 	/* 48 / 30*/
 	margin-top: 2em;
@@ -165,7 +217,13 @@ h3 {
 	/*24 / 21*/
 }
 h3 {
+	font-size: 1.25em;
 	font-weight: normal;
+}
+h2 {
+	font-size: 1.333333em;
+	border-bottom: 1px solid #c5c5c5;
+	padding-bottom: 0.5em;
 }
 h4 {
 	font-size: 1.125em;
@@ -199,6 +257,10 @@ p,
 blockquote,
 .md-fences {
 	margin-bottom: 1.5em;
+}
+p {
+	margin-top: 0;
+	margin-bottom: 1.2em;
 }
 h1,
 h2,
