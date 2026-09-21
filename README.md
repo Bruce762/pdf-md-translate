@@ -135,7 +135,7 @@ md-translate paper.pdf --no-translate  # PDF → PDF，跳過翻譯
 
 ```bash
 md-translate thesis.pdf --lang 繁體中文 --no-css
-md-translate file.pdf -m --no-translate --ocr-lang ch_lite
+md-translate file.pdf -m --no-translate --ocr-lang ch
 ```
 
 > ⚠️ **別把兩個「語言」搞混**：
@@ -238,42 +238,38 @@ md-translate paper.md --css my_style.css
 
 很多人以為 `--cpu` 只是「把 GPU 的工作改用 CPU 做、單純變慢」，其實**它會切換成另一套完全不同的解析引擎**，辨識能力也跟著不同：
 
-|                      | 不加`--cpu`（預設 VLM 後端）            | 加`--cpu`（pipeline 後端）                          |
+|                      | 不加`--cpu`（Hybrid medium）              | 加`--cpu`（pipeline 後端）                          |
 | -------------------- | ----------------------------------------- | ----------------------------------------------------- |
 | **核心模型**   | 視覺語言模型 MinerU2.5（VLM）             | 傳統 CV 流水線：版面偵測 + PaddleOCR + 公式／表格模型 |
 | **工作方式**   | 像「看懂整頁」一樣直接輸出結構化 markdown | 分模組：先框版面 → 再分別 OCR                        |
 | **程式碼辨識** | 完整（行內、程式碼塊）                    | 弱，圖片式偽代碼常抓不到                              |
 | **算力需求**   | 需要 GPU（M 系列 Mac 用 Apple GPU 跑）    | 輕量，CPU 也能跑                                      |
 
-> 💡 **結論**：追求辨識品質就**不要加 `--cpu`**，走預設 VLM 後端；`--cpu` 只當作記憶體不足、預設模式跑不動時的輕量備援，代價是辨識明顯變弱。
+> 💡 **結論**：一般文件建議**不要加 `--cpu`**，程式會使用 `hybrid-engine` 的預設 `medium` 強度。它仍會提取 PDF 圖片，但不會額外分析圖片與圖表內容，速度較快且較省記憶體；`--cpu` 只當作記憶體不足、Hybrid 跑不動時的輕量備援。
 >
-> 🍎 **Mac 用戶**：M 系列 Mac 不加 `--cpu` 時會用 Apple GPU 跑精度更高的 VLM 後端，建議優先不要加 `--cpu`。
+> 🍎 **Mac 用戶**：M 系列 Mac 不加 `--cpu` 時會用 Apple GPU 執行 Hybrid medium 模式，建議優先不要加 `--cpu`。
 
 ---
 
 ## OCR 語言（`--ocr-lang`）
 
-`--ocr-lang` 決定 mineru 用哪種語言模型辨識**原文 PDF**，預設 `en`（適合英文論文）。翻譯非英文論文時要改的是這個參數，不是 `--lang`：
+`--ocr-lang` 決定 mineru 用哪種語言模型辨識**原文 PDF**。MinerU 3.4.5 將英文、中文、日文、繁體中文與拉丁字母場景統一交由 `ch` 模型處理，因此本工具預設使用 `ch`。翻譯其他語系論文時要改的是這個參數，不是 `--lang`：
 
 ```bash
-md-translate english_paper.pdf                          # 英文論文（預設 en）
-md-translate 中文論文.pdf --ocr-lang ch_lite             # 中文論文
-md-translate 中文論文.pdf --ocr-lang ch_lite --lang 英文  # 中文原文 → 翻成英文
+md-translate english_paper.pdf                       # 英文論文（預設 ch）
+md-translate 中文論文.pdf --ocr-lang ch              # 中文論文
+md-translate 中文論文.pdf --ocr-lang ch --lang 英文  # 中文原文 → 翻成英文
 ```
 
 常用代碼（完整清單見 `mineru --help`）：
 
-| 代碼                                                   | 語言                           | 備註                                               |
-| ------------------------------------------------------ | ------------------------------ | -------------------------------------------------- |
-| `en`                                                 | 英文                           | **預設值**，最適合英文論文                   |
-| `ch_lite`                                            | 簡體中文（輕量）               | ✅**中文首選**：字典匹配、不會崩             |
-| `ch_server`                                          | 簡體中文（伺服器版）           | 比 lite 更準；加`--cpu` 時會被降級成 `ch_lite` |
-| `chinese_cht`                                        | 繁體中文                       | 加`--cpu` 時會被降級成 `ch_lite`               |
-| `japan`                                              | 日文                           | 加`--cpu` 時會被降級成 `ch_lite`               |
-| `korean`                                             | 韓文                           |                                                    |
-| `latin`                                              | 拉丁字母系（英／法／德／西等） |                                                    |
-| `arabic` / `cyrillic` / `devanagari` / `th` … | 阿拉伯／西里爾／天城文／泰文等 |                                                    |
-| `ch`                                                 | 簡體中文                       | ⚠️**不建議**：舊字典不匹配，含表格時會崩潰 |
+| 代碼                                                        | 語言／文字系統                         | 備註                         |
+| ----------------------------------------------------------- | -------------------------------------- | ---------------------------- |
+| `ch`                                                        | 中、英、日、繁中與拉丁字母場景         | **MinerU 3.4.5 預設值** |
+| `ch_server`                                                 | 中文伺服器模型                         | pipeline 後端使用             |
+| `korean`                                                    | 韓文                                   | pipeline 後端使用             |
+| `ta` / `te` / `ka` / `th` / `el`                          | 泰米爾／泰盧固／喬治亞／泰／希臘文     | pipeline 後端使用             |
+| `arabic` / `east_slavic` / `cyrillic` / `devanagari`       | 阿拉伯／東斯拉夫／西里爾／天城文字系統 | pipeline 後端使用             |
 
 ---
 
@@ -383,7 +379,7 @@ md-translate paper_trans.md --no-translate
 目前不行，請逐一執行。
 
 **Q：Mac 需要加 `--cpu` 嗎？**
-建議不要。M 系列 Mac 預設用 Apple GPU 跑更準的 VLM 後端，只有跑不動時才拿 `--cpu` 當備援（見〈CPU 模式與後端差異〉）。
+建議不要。M 系列 Mac 預設用 Apple GPU 執行 `hybrid-engine`；MinerU 會採用預設的 `medium` 強度。只有跑不動時才拿 `--cpu` 當備援（見〈CPU 模式與後端差異〉）。
 
 **Q：要先裝 Pandoc 嗎？**
 不用。程式會在轉 PDF 前檢查，缺少時才下載到目前 Python 環境；首次下載需要網路。
@@ -392,6 +388,14 @@ md-translate paper_trans.md --no-translate
 由 LLM 決定，繁中／簡中／英／日／韓／法／西／德等常見語言都支援，其他語言也可以試。
 
 ---
+
+## 1.0.5 更新
+
+- 將 MinerU 從 3.0.9 升級至 3.4.5。
+- Apple Silicon 已完成 pipeline 與 MLX hybrid-engine 的 19 頁 PDF 轉換測試。
+- 預設使用 MinerU 的 Hybrid `medium` 解析強度；仍會提取圖片，但不額外分析圖片與圖表內容。
+- OCR 預設代碼改為 MinerU 3.4.5 支援的 `ch`，並更新語言選項說明。
+- 保留驗證通過的 `pypdfium2==4.30.0`、`pdftext==0.6.3` 與 `mlx==0.31.1`。
 
 ## 1.0.4 更新
 

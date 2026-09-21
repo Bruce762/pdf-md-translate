@@ -354,13 +354,13 @@ def translate_markdown(file_path, target_language="繁體中文"):
     
     print(f"\n✅ 翻譯完成！儲存路徑：{output_path}")
 
-def convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=False, ocr_lang="en"):
+def convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=False, ocr_lang="ch"):
     """
     使用 mineru 將 PDF 轉換為 Markdown
     返回生成的 MD 文件路徑
     use_cpu: 使用 CPU 模式執行 mineru（加上 -b pipeline 參數）
-    ocr_lang: mineru OCR 語言（-l 參數）。預設 en，避開 ch 表格識別模型
-              與字典錯配導致的崩潰（IndexError: index 15631 ...）。
+    ocr_lang: mineru OCR 語言（-l 參數）。MinerU 3.4.5 將英文、中文、
+              日文與拉丁字母場景統一交由預設的 ch OCR 模型處理。
     """
     if not os.path.exists(pdf_file):
         print(f"{Colors.RED}❌ 錯誤：找不到 PDF 文件 '{pdf_file}'{Colors.NC}")
@@ -376,6 +376,8 @@ def convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=False, ocr_lang="en"):
     if use_cpu:
         print(f"{Colors.YELLOW}執行模式：CPU（pipeline 後端）{Colors.NC}")
         print(f"{Colors.YELLOW}⚠️  pipeline 後端的結構／程式碼辨識較弱；移除 --cpu 會改用精度更高的 VLM 後端{Colors.NC}")
+    else:
+        print(f"{Colors.GREEN}執行模式：Hybrid（effort=medium，MinerU 預設）{Colors.NC}")
     if ocr_lang:
         print(f"{Colors.GREEN}OCR 語言：{ocr_lang}{Colors.NC}")
     print(f"{Colors.GREEN}========================================{Colors.NC}")
@@ -388,6 +390,8 @@ def convert_pdf_with_mineru(pdf_file, output_dir, use_cpu=False, ocr_lang="en"):
         mineru_cmd = ["mineru", "-p", pdf_file, "-o", temp_output]
         if use_cpu:
             mineru_cmd += ["-b", "pipeline"]
+        else:
+            mineru_cmd += ["-b", "hybrid-engine"]
         if ocr_lang:
             mineru_cmd += ["-l", ocr_lang]
         print(f"{Colors.YELLOW}執行命令: {' '.join(mineru_cmd)}{Colors.NC}\n")
@@ -622,7 +626,7 @@ def parse_command_flags(args):
     target_language = None  # --lang 參數值
     css_file = None  # --css 參數值
     use_cpu = False  # --cpu 參數
-    ocr_lang = "en"  # --ocr-lang 參數值（mineru OCR 語言），預設 en
+    ocr_lang = "ch"  # --ocr-lang 參數值（MinerU 3.4.5 預設 OCR 模型）
 
     # 掃描參數
     for i, arg in enumerate(args):
@@ -652,7 +656,7 @@ def parse_command_flags(args):
             pkg_dir = os.path.dirname(__file__)
             css_file = os.path.join(pkg_dir, "night.css")
         elif arg == "--ocr-lang":
-            # mineru OCR 語言（傳給 -l）。例如 ch / en / japan ...
+            # mineru OCR 語言（傳給 -l）。例如 ch / korean / arabic ...
             if i + 1 < len(args) and not args[i + 1].startswith("-"):
                 ocr_lang = args[i + 1]
 
@@ -729,14 +733,14 @@ def main():
         return
 
 
-def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_translate=False, css_file=None, use_cpu=False, ocr_lang="en"):
+def _handle_pdf_file(pdf_file, target_language, only_markdown=False, skip_translate=False, css_file=None, use_cpu=False, ocr_lang="ch"):
     """
     處理 PDF 文件
     only_markdown: -m 參數，只輸出 MD，不轉 PDF
     skip_translate: --no-translate 參數，跳過翻譯
     css_file: 自定義 CSS 文件路徑
     use_cpu: --cpu 參數，使用 CPU 模式執行 mineru
-    ocr_lang: --ocr-lang 參數，mineru OCR 語言（預設 en）
+    ocr_lang: --ocr-lang 參數，mineru OCR 語言（預設 ch）
     """
     output_dir = "."
     
