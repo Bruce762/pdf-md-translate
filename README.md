@@ -2,7 +2,7 @@
 
 把 **PDF / Markdown 論文翻譯成你要的語言**，並輸出排版好看的 PDF。
 
-支持 OpenAI GPT 與 Google Gemini，自動保留 LaTeX 公式、程式碼與表格。
+支援 OpenAI 與 Google Gemini，自動保留 LaTeX 公式、程式碼與表格。可在 `--setup` 選擇學術翻譯、容易理解的語氣，或自訂翻譯 prompt，並支援自訂 PDF 樣式。
 
 ```bash
 python -m pip install --upgrade pdf-md-translate     # 1. 安裝 有些python需要改成python3
@@ -138,7 +138,7 @@ md-translate "paper.md" --no-translate  # 輸出 paper_trans.pdf
 
 | 命令                      | 簡寫   | 作用                       |
 | ------------------------- | ------ | -------------------------- |
-| `md-translate --setup`  | `-s` | 設定 API Key、提供商與模型 |
+| `md-translate --setup`  | `-s` | 設定 API Key、提供商、模型與翻譯 prompt |
 | `md-translate --config` | `-c` | 顯示設定檔位置             |
 | `md-translate --lang`   |        | 互動式選擇預設語言         |
 | `md-translate --help`   | `-h` | 顯示說明                   |
@@ -287,6 +287,18 @@ md-translate 中文論文.pdf --ocr-lang ch --lang 英文  # 中文原文 → �
 
 ## 設定檔
 
+### 翻譯 prompt
+
+執行 `md-translate --setup` → `3. 翻譯 prompt`，可選擇：
+
+- **原本的學術翻譯（預設）**：沿用原本的翻譯規則與範例，舊設定檔也預設使用此模式。
+- **容易理解的翻譯**：用自然、親切、白話的語氣說清楚內容，避免艱澀用字與冗長句子，同時忠實保留原文資訊，不自行新增解說。
+- **自訂 prompt**：輸入自己的翻譯指示，支援多行；單獨輸入 `.` 結束並儲存。可使用 `{target_language}` 代表本次目標語言，例如「用清楚的台灣用語翻譯成 {target_language}，必要術語附上英文」。
+
+選擇會儲存並套用至後續翻譯，OpenAI 與 Gemini 共用此設定。首次設定向導也會提供此選擇。自訂模式會自動附加目標語言、保留 Markdown／LaTeX 公式、僅輸出譯文與標題編號處理規則；切換模式會保留已儲存的自訂內容，方便日後再次使用。
+
+### 設定檔位置
+
 位置：`~/.config/markdown-translator/config.json`（用 `md-translate --config` 查看）
 
 ```json
@@ -296,7 +308,9 @@ md-translate 中文論文.pdf --ocr-lang ch --lang 英文  # 中文原文 → �
   "gemini_api_key": "",
   "target_language": "繁體中文",
   "openai_model": "gpt-5.4-mini",
-  "gemini_model": "gemini-3.1-flash-lite"
+  "gemini_model": "gemini-3.1-flash-lite",
+  "translation_prompt_style": "academic",
+  "custom_translation_prompt": ""
 }
 ```
 

@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 導入配置管理模塊
 from .config import config_manager, DEFAULT_MODELS
+from .prompts import build_translation_prompts
 
 def get_mineru_version():
     """獲取已安裝的 mineru 版本，取不到時返回 None"""
@@ -92,24 +93,10 @@ def call_translation_api(text, is_heading=False, target_language="繁體中文")
     is_heading: 是否為標題
     target_language: 目標翻譯語言
     """
-    system_prompt = (
-        "你是一位精通演算法與計算優化的資工專家，專長是學術論文翻譯。\n\n"
-        "### 任務規範：\n"
-        f"1. 將 Markdown 文字翻譯成專業的{target_language}。\n"
-        "2. **嚴格保留 LaTeX 公式**：所有以 `$` 或 `$$` 包圍的內容絕對不准變動，保持原始位置。\n"
-        "3. **保留資工術語**：如 Mutation (變異), Crossover (交叉), Population (種群), $F$ (Scaling factor), $CR$ (Crossover rate) 等建議保留原文或標註原文。\n"
-        "4. **僅輸出翻譯結果**，不要有任何解釋性文字。\n"
-        "5. 可能出現單字也要翻譯"
-    )
-    
-    # 如果是標題，添加第6點
-    if is_heading:
-        system_prompt += "\n6. 刪除所有標題編號：直接忽略原文開頭的層級數字（如 1.1, 1.2, 2.3.1 等），僅翻譯後續的實質內容文字。"
-    
-    prompt = (
-        "範例輸入：The mutant vector $V_{i,G+1}$ is calculated using the formula $V_{i,G+1} = X_{r1,G} + F \\cdot (X_{r2,G} - X_{r3,G})$.\n"
-        "範例輸出：變異向量 $V_{i,G+1}$ 是使用公式 $V_{i,G+1} = X_{r1,G} + F \\cdot (X_{r2,G} - X_{r3,G})$ 計算得出的。\n\n"
-        f"現在請翻譯以下段落：\n\n{text}"
+    prompt, system_prompt = build_translation_prompts(
+        text, target_language, is_heading,
+        style=config_manager.get_translation_prompt_style(),
+        custom_prompt=config_manager.get_custom_translation_prompt(),
     )
     
     try:

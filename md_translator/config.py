@@ -8,6 +8,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from .prompts import PROMPT_LABELS
 
 
 DEFAULT_MODELS = {"openai": "gpt-5.4-mini", "gemini": "gemini-3.1-flash-lite"}
@@ -59,7 +60,9 @@ class ConfigManager:
             "openai_api_key": "",
             "target_language": "繁體中文",  # 目标翻译语言
             "openai_model": DEFAULT_MODELS["openai"],
-            "gemini_model": DEFAULT_MODELS["gemini"]
+            "gemini_model": DEFAULT_MODELS["gemini"],
+            "translation_prompt_style": "academic",
+            "custom_translation_prompt": ""
         }
     
     def _save_config(self):
@@ -110,6 +113,66 @@ class ConfigManager:
         self._save_config()
         print("✅ OpenAI API Key 已保存")
     
+    def get_translation_prompt_style(self) -> str:
+        style = self.config.get("translation_prompt_style", "academic")
+        if style not in PROMPT_LABELS or (style == "custom" and not self.get_custom_translation_prompt().strip()):
+            return "academic"
+        return style
+
+    def get_custom_translation_prompt(self) -> str:
+        return self.config.get("custom_translation_prompt", "")
+
+    def set_translation_prompt(self, style: str, custom_prompt=None):
+        if style not in PROMPT_LABELS:
+            raise ValueError("不支援的翻譯 prompt 模式")
+        prompt = self.get_custom_translation_prompt() if custom_prompt is None else custom_prompt.strip()
+        if style == "custom" and not prompt.strip():
+            raise ValueError("自訂 prompt 不可空白")
+        self.config["translation_prompt_style"] = style
+        if custom_prompt is not None:
+            self.config["custom_translation_prompt"] = prompt
+        self._save_config()
+        print(f"✅ 翻譯 prompt 已設為：{PROMPT_LABELS[style]}")
+
+    def _translation_prompt_submenu(self):
+        current_style = self.get_translation_prompt_style()
+        print(f"\n目前翻譯 prompt：{PROMPT_LABELS[current_style]}")
+        for index, (style, label) in enumerate(PROMPT_LABELS.items(), 1):
+            mark = " ✅（目前使用中）" if style == current_style else ""
+            print(f"  {index}. {label}{mark}")
+        print("易懂模式：用自然、白話的語氣忠實翻譯，避免艱澀用字與冗長句子。")
+        choice = input("輸入編號（留空取消）: ").strip()
+        if not choice:
+            return
+        if choice not in ("1", "2", "3"):
+            print("⚠️ 無效編號，原設定未變更。")
+            return
+        style = list(PROMPT_LABELS)[int(choice) - 1]
+        if style != "custom":
+            self.set_translation_prompt(style)
+            return
+        saved = self.get_custom_translation_prompt()
+        if saved:
+            print(f"\n已儲存的自訂 prompt：\n{saved}")
+        print("\n輸入自訂翻譯指示，可輸入多行；單獨輸入 . 結束。")
+        print("可使用 {target_language} 代表目標語言；公式保留與僅輸出譯文規則會自動加入。")
+        print("不輸入內容就結束：沿用已儲存的自訂 prompt；若尚未設定則取消。")
+        lines = []
+        try:
+            while True:
+                line = input("prompt> ")
+                if line.strip() == ".":
+                    break
+                lines.append(line)
+        except (EOFError, KeyboardInterrupt):
+            print("\n已取消，原設定未變更。")
+            return
+        prompt = "\n".join(lines).strip() or saved
+        if prompt.strip():
+            self.set_translation_prompt("custom", prompt)
+        else:
+            print("⚠️ 自訂 prompt 不可空白，原設定未變更。")
+
     def get_model(self, provider: str) -> str:
         return self.config.get(f"{provider}_model") or DEFAULT_MODELS[provider]
 
@@ -235,6 +298,7 @@ class ConfigManager:
             else:
                 print("⚠️  跳過 Gemini API Key 設置")
         
+        self._translation_prompt_submenu()
         print("\n✅ 設置完成！\n")
     
     def check_and_setup(self):
@@ -313,19 +377,22 @@ class ConfigManager:
             openai_mark = " ✅" if current == "openai" else ""
             gemini_mark = " ✅" if current == "gemini" else ""
             print("\n" + "="*50)
-            print("⚙️  API 配置")
+            print("⚙️  翻譯工具設定")
             print("="*50)
             print("\n  選擇 API 提供商：")
             print(f"  1. OpenAI{openai_mark}")
             print(f"  2. Gemini{gemini_mark}")
-            print("  3. 退出設定")
-            choice = input("\n請輸入選擇 (1-3) [默認: 3]: ").strip() or "3"
+            print(f"  3. 翻譯 prompt [{PROMPT_LABELS[self.get_translation_prompt_style()]}]")
+            print("  4. 退出設定")
+            choice = input("\n請輸入選擇 (1-4) [預設: 4]: ").strip() or "4"
 
             if choice == "1":
                 self._provider_submenu("openai")
             elif choice == "2":
                 self._provider_submenu("gemini")
             elif choice == "3":
+                self._translation_prompt_submenu()
+            elif choice == "4":
                 print("\n  已退出設定。\n")
                 break
     

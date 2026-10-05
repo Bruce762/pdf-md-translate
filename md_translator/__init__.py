@@ -1,8 +1,8 @@
 """
-Markdown 論文翻譯工具
-支持 OpenAI GPT 和 Google Gemini 模型
+PDF／Markdown 文件翻譯與轉換工具
+支援 OpenAI 與 Google Gemini，可選學術或易懂語氣，以及自訂翻譯 prompt
 """
 
 __version__ = "1.0.6"
 __author__ = "Bruce762"
-__description__ = "使用 LLM 自動翻譯 PDF 與 Markdown 論文為繁體中文"
+__description__ = "PDF／Markdown 文件翻譯與轉換工具：支援多語言、學術或易懂語氣、自訂翻譯 prompt 與 PDF 樣式"
