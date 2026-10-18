@@ -9,7 +9,7 @@
         margin-left: 0;
         margin-right: 0;
         font-size: 14pt;
-        line-height: 1.5;
+        line-height: 1.4;
         overflow-wrap: anywhere;
         container-type: inline-size;
     }
@@ -283,6 +283,11 @@ blockquote {
 ul,
 ol {
 	margin: 0 0 1.5em 1.5em;
+}
+
+ul > li + li,
+ol > li + li {
+	margin-top: 0.35em;
 }
 /* tables */
 .md-meta,.md-before, .md-after {

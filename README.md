@@ -129,7 +129,7 @@ md-translate "paper.md" --no-translate  # 輸出 paper_trans.pdf
 | `--md-only`       | `-m`           | 只輸出 Markdown，不轉 PDF                                |
 | `--no-translate`  |                  | 跳過翻譯，只做格式轉換                                   |
 | `--css FILE`      | `--style FILE` | 用自訂 CSS 生成 PDF                                      |
-| `--no-css`        |                  | 用內建**GitHub 風格主題**（白底、Open Sans）       |
+| `--no-css`        |                  | 用內建**白底主題**（複製自預設主題、正黑體類字體、無標題底線）       |
 | `--black-css`     |                  | 用內建**night 暗色主題**（深色背景、適合螢幕閱讀） |
 | `--cpu`           |                  | PDF 轉檔改用輕量 CPU 後端（低資源備援，辨識較弱）        |
 | `--ocr-lang LANG` |                  | PDF**原文**的 OCR 辨識語言（預設 `en`）          |
@@ -206,17 +206,18 @@ MD   ─────────────────────────
 
 ```bash
 md-translate paper.md                 # 預設主題（PT Serif 襯線、米色背景）
-md-translate paper.md --no-css        # 內建 GitHub 主題（Open Sans、白底）
+md-translate paper.md --no-css        # 獨立白底主題（正黑體類字體、無標題底線）
 md-translate paper.md --black-css     # 內建 night 暗色主題（深色背景）
 md-translate paper.md --css mine.css  # 你自己的 CSS
 ```
 
-### `--no-css`：內建 GitHub 主題
+### `--no-css`：內建白底主題
 
-不用自己寫 CSS 就能套用乾淨現代的版面：
+套用從 `default.css` 複製並調整的獨立樣式 `no-css.css`，原本的預設主題維持不變：
 
-- 🅰️ Open Sans 字體 + 白色背景，貼近 GitHub 的 Markdown 預覽
-- 📦 字體已內建，免另外安裝
+- 🅰️ 優先使用微軟正黑體，依序備援蘋方繁體、黑體與 Noto Sans TC，搭配白色背景
+- 標題沒有底線，`#` 一級標題大於 `##` 二級標題（32px／24px）
+- 字體使用系統已安裝的字型；未安裝微軟正黑體時會自動使用備援字型
 - 🈶 完整中文支援（含程式碼區塊內的中文）
 - 🧱 程式碼區塊是單一連續方框，不會斷裂
 
