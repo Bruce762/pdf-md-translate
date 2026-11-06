@@ -147,8 +147,14 @@ html {
 html, body {
 	background-color: #f3f2ee;
 	font-family: "PT Serif", "PDF Noto Serif TC", 'Times New Roman', Times, serif;
+	letter-spacing: 0.0005em;
 	color: #1f0909;
 	line-height: 1.5em;
+}
+
+/* Keep mathematical notation and monospace alignment at their natural spacing. */
+mjx-container, pre, code {
+    letter-spacing: normal;
 }
 
 /*#write {
