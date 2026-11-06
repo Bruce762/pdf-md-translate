@@ -11,6 +11,51 @@ from md_translator import convert_to_pdf
 
 @unittest.skipUnless(os.environ.get("MD_TRANSLATOR_TEST_CHROME") == "1", "requires Chrome")
 class PdfLayoutTests(unittest.TestCase):
+    def test_waits_for_mathjax_beyond_the_old_ten_second_budget(self):
+        from pypdf import PdfReader
+
+        css = Path(convert_to_pdf.__file__).with_name("default.css").as_uri()
+        with tempfile.TemporaryDirectory() as folder:
+            html = Path(folder) / "delayed.html"
+            pdf = Path(folder) / "delayed.pdf"
+            html.write_text(f"""<!doctype html><html><head>
+<link rel="stylesheet" href="{css}">
+<script>
+window.MathJax = {{startup: {{promise: new Promise(resolve => {{
+    setTimeout(() => {{
+        document.getElementById('formula').innerHTML =
+            '<mjx-container><mjx-math style="display:inline-block;white-space:nowrap">' +
+            '<span style="display:inline-block;width:100em">FORMULA_READY</span>' +
+            'FORMULA_END</mjx-math></mjx-container>';
+        resolve();
+    }}, 12000);
+}})}}}};
+</script></head><body><p>BODY_SIZE_PROBE</p><div id="formula"></div></body></html>""", encoding="utf-8")
+            self.assertTrue(convert_to_pdf.convert_html_to_pdf(str(html), str(pdf)))
+            reader = PdfReader(pdf)
+            sizes = []
+
+            def visit(text, cm, tm, font, size):
+                if "BODY_SIZE_PROBE" in text:
+                    sizes.append(size * abs(cm[0]))
+
+            text = "".join(page.extract_text(visitor_text=visit) for page in reader.pages)
+            self.assertIn("FORMULA_READY", text)
+            self.assertIn("FORMULA_END", text)
+            self.assertEqual(len(sizes), 1)
+            self.assertAlmostEqual(sizes[0], 14, delta=0.05)
+
+    def test_missing_mathjax_preserves_the_existing_pdf(self):
+        with tempfile.TemporaryDirectory() as folder:
+            html = Path(folder) / "missing-math.html"
+            pdf = Path(folder) / "existing.pdf"
+            pdf.write_bytes(b"existing PDF")
+            missing = (Path(folder) / "missing-mathjax.js").as_uri()
+            html.write_text(f'<html><head><script src="{missing}"></script></head>'
+                            '<body><span class="math">x+y</span></body></html>', encoding="utf-8")
+            self.assertFalse(convert_to_pdf.convert_html_to_pdf(str(html), str(pdf)))
+            self.assertEqual(pdf.read_bytes(), b"existing PDF")
+
     def test_wide_math_and_table_preserve_body_size_and_bundled_chinese_font(self):
         from pypdf import PdfReader
 

@@ -20,9 +20,7 @@ class PdfFailureTests(unittest.TestCase):
             process.poll.return_value = None
             with patch.object(convert_to_pdf.subprocess, "Popen", return_value=process), patch.object(
                 convert_to_pdf, "_pdf_is_complete", return_value=True
-            ), patch.object(convert_to_pdf.time, "monotonic", side_effect=[0, 0, 0, 0, 2, 2]), patch.object(
-                convert_to_pdf.time, "sleep"
-            ):
+            ), patch.object(convert_to_pdf, "_render_with_devtools"):
                 self.assertTrue(convert_to_pdf._print_with_chrome(["chrome"], str(pdf)))
             process.terminate.assert_called_once()
             process.wait.assert_called_once_with(timeout=3)
@@ -31,7 +29,7 @@ class PdfFailureTests(unittest.TestCase):
         process = Mock()
         process.poll.return_value = None
         with patch.object(convert_to_pdf.subprocess, "Popen", return_value=process), patch.object(
-            convert_to_pdf.time, "monotonic", side_effect=[0, 0, 121]
+            convert_to_pdf, "_render_with_devtools", side_effect=TimeoutError("layout not ready")
         ):
             self.assertFalse(convert_to_pdf._print_with_chrome(["chrome"], "missing.pdf"))
         process.terminate.assert_called_once()

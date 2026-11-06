@@ -19,6 +19,9 @@ import platform
 import re
 import tempfile
 import time
+import base64
+import json
+from urllib.request import build_opener, ProxyHandler
 from pathlib import Path
 from contextlib import closing
 
@@ -314,33 +317,132 @@ def _pdf_is_complete(path):
         return False
 
 
-def _print_with_chrome(cmd, generated_pdf):
-    # A file avoids filling stderr pipes while Chrome keeps running after print.
-    with tempfile.TemporaryFile(mode="w+b") as log:
-        process = subprocess.Popen(cmd, stdout=log, stderr=log)
+_PDF_READY_SCRIPT = """(async () => {
+    const hasMathLoader = !!document.querySelector('script[src*="mathjax"]');
+    if (hasMathLoader && document.querySelector('.math') && !window.MathJax?.startup?.promise) {
+        throw new Error('MathJax failed to load; cannot safely print formulas');
+    }
+    if (window.MathJax?.startup?.promise) await MathJax.startup.promise;
+    await document.fonts.ready;
+    const formulas = [...document.querySelectorAll('mjx-container > mjx-math')];
+    // Re-measure natural widths in print media, even if the HTML's load
+    // handler already fitted the formulas for the screen viewport.
+    for (const math of formulas) {
+        math.style.removeProperty('--math-natural-width');
+        math.style.removeProperty('--math-natural-width-em');
+    }
+    const widths = formulas.map(math => {
+        const width = Math.max(math.scrollWidth, math.getBoundingClientRect().width);
+        const fontSize = parseFloat(getComputedStyle(math).fontSize);
+        return width > 0 && fontSize > 0 ? width / fontSize : 0;
+    });
+    formulas.forEach((math, i) => {
+        if (widths[i] > 0) {
+            math.style.setProperty('--math-natural-width', `${widths[i]}em`);
+            math.style.setProperty('--math-natural-width-em', widths[i]);
+        }
+    });
+    return {formulas: formulas.length};
+})()"""
+
+
+def _render_with_devtools(process, cmd, generated_pdf, deadline):
+    """Wait for real browser readiness instead of a fixed virtual-time budget."""
+    from websockets.sync.client import connect
+
+    def remaining():
+        seconds = deadline - time.monotonic()
+        if seconds <= 0:
+            raise TimeoutError("Chrome PDF rendering timed out after 120 seconds")
+        return seconds
+
+    profile = next(arg.split("=", 1)[1] for arg in cmd if arg.startswith("--user-data-dir="))
+    port_file = Path(profile) / "DevToolsActivePort"
+    opener = build_opener(ProxyHandler({}))
+    while True:
+        remaining()
+        if process.poll() is not None:
+            raise RuntimeError("Chrome exited before its DevTools endpoint was ready")
         try:
-            deadline = time.monotonic() + 120
-            previous = None
-            stable_since = time.monotonic()
-            while time.monotonic() < deadline:
-                now = time.monotonic()
-                try:
-                    stat = os.stat(generated_pdf)
-                    current = (stat.st_size, stat.st_mtime_ns)
-                except FileNotFoundError:
-                    current = None
-                if current != previous:
-                    previous, stable_since = current, now
-                if current and now - stable_since >= 1 and _pdf_is_complete(generated_pdf):
-                    return True
-                if process.poll() is not None:
-                    if process.returncode == 0 and _pdf_is_complete(generated_pdf):
-                        return True
-                    log.seek(0)
-                    print(log.read().decode("utf-8", errors="replace"), file=sys.stderr)
-                    return False
-                time.sleep(0.25)
-            print("✗ Chrome did not produce a complete PDF within 120 seconds", file=sys.stderr)
+            port = int(port_file.read_text().splitlines()[0])
+            # DevTools stays on loopback even with HTTP proxy variables set.
+            with opener.open(f"http://127.0.0.1:{port}/json", timeout=remaining()) as response:
+                targets = json.load(response)
+            target = next((target for target in targets if target.get("type") == "page"), None)
+            if target is not None:
+                break
+        except (OSError, ValueError, IndexError):
+            # The port file and initial page can appear at different times.
+            pass
+        time.sleep(0.05)
+    with connect(target["webSocketDebuggerUrl"], proxy=None, open_timeout=remaining(),
+                 close_timeout=1, max_size=None) as socket:
+        serial = 0
+
+        def call(method, params=None):
+            nonlocal serial
+            serial += 1
+            request_id = serial
+            socket.send(json.dumps({"id": request_id, "method": method, "params": params or {}}))
+            while True:
+                result = json.loads(socket.recv(timeout=remaining()))
+                if result.get("id") != request_id:
+                    continue
+                if "error" in result:
+                    raise RuntimeError(f"Chrome {method}: {result['error']}")
+                return result.get("result", {})
+
+        def evaluate(expression):
+            result = call("Runtime.evaluate", {
+                "expression": expression, "awaitPromise": True, "returnByValue": True,
+                "timeout": remaining() * 1000,
+            })
+            if "exceptionDetails" in result:
+                detail = result["exceptionDetails"]
+                message = detail.get("exception", {}).get("description", detail.get("text"))
+                raise RuntimeError(f"PDF layout preparation failed: {message}")
+            return result.get("result", {}).get("value")
+
+        call("Page.enable")
+        call("Emulation.setEmulatedMedia", {"media": "print"})
+        navigation = call("Page.navigate", {"url": cmd[-1]})
+        if navigation.get("errorText"):
+            raise RuntimeError(f"Chrome navigation failed: {navigation['errorText']}")
+        # Page.navigate can return before the previous about:blank context is
+        # replaced. Require the requested URL as well as a completed load.
+        loaded = f"location.href === {json.dumps(cmd[-1])} && document.readyState === 'complete'"
+        while True:
+            try:
+                if evaluate(loaded):
+                    break
+            except RuntimeError as error:
+                if not any(message in str(error) for message in (
+                    "Execution context was destroyed", "Cannot find context with specified id"
+                )):
+                    raise
+            remaining()
+            time.sleep(0.05)
+        evaluate(_PDF_READY_SCRIPT)
+        result = call("Page.printToPDF", {
+            "printBackground": True, "displayHeaderFooter": False,
+            "scale": 1, "paperWidth": 8.5, "paperHeight": 11,
+            "preferCSSPageSize": True,
+        })
+        Path(generated_pdf).write_bytes(base64.b64decode(result["data"], validate=True))
+
+
+def _print_with_chrome(cmd, generated_pdf):
+    # Keep the tab blank until DevTools applies print media and navigates it.
+    with tempfile.TemporaryFile(mode="w+b") as log:
+        process = subprocess.Popen(cmd[:-1] + ["about:blank"], stdout=log, stderr=log)
+        try:
+            _render_with_devtools(process, cmd, generated_pdf, time.monotonic() + 120)
+            return _pdf_is_complete(generated_pdf)
+        except Exception as error:
+            print(f"✗ Chrome PDF rendering failed: {error}", file=sys.stderr)
+            log.seek(0, os.SEEK_END)
+            log.seek(max(0, log.tell() - 4096))
+            print(log.read().decode("utf-8", errors="replace"), file=sys.stderr)
             return False
         finally:
             if process.poll() is None:
@@ -393,16 +495,15 @@ def convert_html_to_pdf(input_html, output_pdf):
             "--disable-extensions",
             "--no-first-run",
             "--no-default-browser-check",
-            "--no-pdf-header-footer",
-            "--virtual-time-budget=10000",
-            "--run-all-compositor-stages-before-draw",
-            f"--print-to-pdf={pdf_absolute}",
-            html_absolute
+            "--remote-debugging-address=127.0.0.1",
+            "--remote-debugging-port=0",
+            Path(html_absolute).as_uri(),
         ]
         
-        with tempfile.TemporaryDirectory(prefix="md-pdf-", dir=os.path.dirname(pdf_absolute)) as folder:
+        with tempfile.TemporaryDirectory(
+            prefix="md-pdf-", dir=os.path.dirname(pdf_absolute), ignore_cleanup_errors=True
+        ) as folder:
             generated_pdf = os.path.join(folder, "output.pdf")
-            cmd[-2] = f"--print-to-pdf={generated_pdf}"
             cmd.insert(1, f"--user-data-dir={os.path.join(folder, 'chrome')}")
             if not _print_with_chrome(cmd, generated_pdf):
                 return False

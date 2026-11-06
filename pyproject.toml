@@ -32,7 +32,8 @@ dependencies = [
     "pdftext==0.6.3",
     # MinerU 3.4.5 requires MLX <=0.31.1 for its mlx-vlm backend.
     "mlx==0.31.1; sys_platform == 'darwin' and platform_machine == 'arm64'",
-    "pypandoc==1.17"
+    "pypandoc==1.17",
+    "websockets==16.0"
 ]
 
 

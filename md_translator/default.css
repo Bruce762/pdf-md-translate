@@ -45,7 +45,8 @@
     body mjx-container > mjx-math {
         /* Fit formulas locally using length / number arithmetic, without
            depending on support for typed length / length division in zoom. */
-        font-size: min(1em, calc((100cqw - 1px) / var(--math-natural-width-em, 1)));
+        /* Leave room for MathJax's padding and subpixel glyph rounding. */
+        font-size: min(1em, calc((100cqw - 3px) / var(--math-natural-width-em, 1)));
     }
 
     /* Hidden accessibility MathML must not enlarge the printable document. */

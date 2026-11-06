@@ -245,6 +245,8 @@ md-translate paper.md --css my_style.css
 
 > ℹ️ **中文字型與字級**：預設主題內附開源的 Noto Serif TC（繁體中文宋體），Linux、macOS 與 Windows 皆使用相同中文字型，不需另行安裝或連線下載。正文列印字級為 14pt；超寬表格及公式會各自調整，避免整份 PDF 一起縮小。其他主題及自訂 CSS 仍可能使用系統字型；極簡 Linux 環境可安裝 `fonts-noto-cjk`。字型授權見 `md_translator/fonts/OFL-NotoSerifTC.txt`。
 
+PDF 列印會等待 MathJax 排版、字型載入與公式寬度測量完成，再透過 Chrome DevTools 輸出，最長等待 120 秒。含公式的文件仍需能載入 Pandoc HTML 引用的 MathJax 資源；載入失敗或逾時會回報錯誤並保留既有 PDF，避免輸出公式尚未完成、整頁被縮小的版本。
+
 ---
 
 ## CPU 模式與後端差異（`--cpu`）
