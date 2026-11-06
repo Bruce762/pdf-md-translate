@@ -239,7 +239,9 @@ window.addEventListener('load', async () => {
         const width = Math.max(math.scrollWidth, math.getBoundingClientRect().width);
         const fontSize = parseFloat(getComputedStyle(math).fontSize);
         if (width > 0 && fontSize > 0) {
+            // Retain the length variable for existing/custom print themes.
             math.style.setProperty('--math-natural-width', `${width / fontSize}em`);
+            math.style.setProperty('--math-natural-width-em', width / fontSize);
         }
     }
 });

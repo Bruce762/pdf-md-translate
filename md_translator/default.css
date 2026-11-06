@@ -1,11 +1,13 @@
 
 @page {
+    size: letter;
     margin: 15mm  78pt;
     background-color: #f3f2ee !important;
 }
 
 @media print {
     html body {
+        min-width: 0;
         margin-left: 0;
         margin-right: 0;
         font-size: 14pt;
@@ -41,7 +43,9 @@
     }
 
     body mjx-container > mjx-math {
-        zoom: min(1, calc((100cqw - 1px) / var(--math-natural-width, 1px)));
+        /* Fit formulas locally using length / number arithmetic, without
+           depending on support for typed length / length division in zoom. */
+        font-size: min(1em, calc((100cqw - 1px) / var(--math-natural-width-em, 1)));
     }
 
     /* Hidden accessibility MathML must not enlarge the printable document. */
@@ -68,6 +72,21 @@ html, body {
 @include-when-export url(https://fonts.googleapis.com/css?family=PT+Serif:400,400italic,700,700italic&subset=latin,cyrillic-ext,cyrillic,latin-ext);
 
 /* =========== */
+
+/* Bundled fonts: identical Traditional Chinese glyphs on every OS.
+   Keep PT Serif first for Latin text; do not depend on installed CJK fonts. */
+@font-face {
+  font-family: 'PDF Noto Serif TC';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./fonts/NotoSerifTC-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'PDF Noto Serif TC';
+  font-style: normal;
+  font-weight: 700;
+  src: url('./fonts/NotoSerifTC-Bold.woff2') format('woff2');
+}
 
 /* pt-serif-regular - latin */
 @font-face {
@@ -127,7 +146,7 @@ html {
 
 html, body {
 	background-color: #f3f2ee;
-	font-family: "PT Serif", 'Times New Roman', 'SF Pro', Times, serif;
+	font-family: "PT Serif", "PDF Noto Serif TC", 'Times New Roman', Times, serif;
 	color: #1f0909;
 	line-height: 1.5em;
 }

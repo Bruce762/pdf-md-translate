@@ -243,7 +243,7 @@ md-translate paper.md --css my_style.css
 
 系統會自動偵測背景色、加上列印最佳化，且**不會修改你的原始 CSS 檔**。支援 `--bg-color` 等 CSS 變數。
 
-> ℹ️ **中文字體**：靠系統內建的 CJK 字體顯示（macOS／Windows 開箱即用）。極簡 Linux 環境若缺中文字體，請自行安裝，例如 `apt install fonts-noto-cjk`。
+> ℹ️ **中文字型與字級**：預設主題內附開源的 Noto Serif TC（繁體中文宋體），Linux、macOS 與 Windows 皆使用相同中文字型，不需另行安裝或連線下載。正文列印字級為 14pt；超寬表格及公式會各自調整，避免整份 PDF 一起縮小。其他主題及自訂 CSS 仍可能使用系統字型；極簡 Linux 環境可安裝 `fonts-noto-cjk`。字型授權見 `md_translator/fonts/OFL-NotoSerifTC.txt`。
 
 ---
 
